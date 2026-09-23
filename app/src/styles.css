@@ -124,6 +124,7 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 .zone.sale { grid-column: 1 / -1; border-color: rgba(168, 85, 247, 0.7); background: rgba(168, 85, 247, 0.12); }
 .zone.sale .zone-icon { color: var(--accent); }
 .zone.sale .prices { font-size: 26px; font-weight: 800; color: var(--text); }
+.zone.sale .left { font-size: 17px; font-weight: 700; color: var(--accent); }
 .zone.disabled { border-color: var(--border); background: var(--surface); color: var(--muted); }
 .zone.disabled:active { transform: none; }
 .porte-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

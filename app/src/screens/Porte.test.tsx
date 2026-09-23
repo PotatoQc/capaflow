@@ -54,6 +54,11 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
     expect((screen.getByRole('button', { name: 'Confirmer 8 billets · 64 $' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('le bouton Vente affiche les billets encore disponibles (V = 8)', () => {
+    renderPorte();
+    expect(screen.getByText('8 billets disponibles')).toBeTruthy();
+  });
+
   it('sortie puis réentrée', () => {
     renderPorte();
     fireEvent.click(screen.getByRole('button', { name: /SORTIE/ }));

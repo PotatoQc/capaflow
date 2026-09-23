@@ -137,6 +137,7 @@ export default function Porte() {
             <>
               <span className="zone-icon">$</span>VENTE
               <small className="prices">{state.doorStudent} $ · {state.doorOther} $</small>
+              <small className="left">{state.sellable} billet{state.sellable > 1 ? 's' : ''} disponible{state.sellable > 1 ? 's' : ''}</small>
             </>
           ) : (
             <>

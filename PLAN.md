@@ -116,6 +116,7 @@ Couleurs : fond `#0B0B0F`, surfaces `#17171F`, texte `#F5F5F7`, vert `#22C55E`, 
 - **Check-in** : boutons « Check-in étudiant ↗ » et « Check-in régulier ↗ » au-dessus de « + Staff », qui ouvrent les pages de check-in Hi.Events dans un nouvel onglet. Toujours affichés ; grisés avec « lien à configurer » tant que l'Admin n'a pas enregistré le lien (§6.3).
 - **Staff** : +1 pour l'arrivée d'un membre du staff. Ses sorties et réentrées passent par les boutons normaux.
 - **Vente** : feuille avec deux cartes, Étudiant et Autre, chacune avec son **prix appliqué** (automatique ou figé, §6.3, **figé à l'ouverture de la feuille**) et un compteur − / + (0 au départ). Total des billets ≤ min(10, V au moment de l'ouverture) ; « + » grisé au plafond. Bouton « Confirmer N billet(s) · X $ » (grisé si N = 0) → **une seule opération** `sale` pour tout le groupe, donc « Annuler dernier » annule le groupe entier.
+- **Billets disponibles** : sous les prix du bouton Vente, « V billet(s) disponible(s) », mis à jour en direct.
 - **Nouveau prix** : quand les prix appliqués changent, bandeau violet clignotant « NOUVEAU PRIX : X $ · Y $ » pendant 10 s (si les ventes sont ouvertes).
 - État du bouton Vente, par ordre de priorité : `FERMÉ` (ventes fermées) › `SUSPENDU` (scans vieux de plus de 60 s, sans forçage) › `COMPLET` (V ≤ 0) › ouvert.
 - Âge des scans : ≤ 30 s, rien ; de 30 à 60 s, « ⚠ scans il y a X s » en jaune ; au-delà de 60 s, `SUSPENDU`.
@@ -344,6 +345,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-23 | Écran Porte : nombre de billets encore disponibles (V) affiché sur le bouton Vente |
 | 2026-09-23 | Bouton « Déconnexion » dans l'en-tête (Manager, Admin, Viewer), nécessaire avec la vraie connexion |
 | 2026-09-23 | App Web Firebase créée par API ; config publique en variables GitHub Actions ; Pages activé en mode workflow |
 | 2026-09-23 | Repo public `PotatoQc/capaflow` créé ; Worker déployé et validé (A0.1–A0.4) ; ALLOWED_ORIGIN = `https://potatoqc.github.io` |
