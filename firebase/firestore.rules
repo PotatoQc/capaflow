@@ -1,0 +1,172 @@
+rules_version = '2';
+
+// Règles du PLAN §8. Tout est refusé par défaut.
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function userPath(uid) { return /databases/$(db)/documents/users/$(uid); }
+    function role() {
+      return signedIn() && exists(userPath(request.auth.uid)) ? get(userPath(request.auth.uid)).data.role : 'none';
+    }
+    function isActive() { return role() in ['admin', 'manager', 'bouncer', 'viewer']; }
+    function isAdmin() { return role() == 'admin'; }
+    function isManager() { return role() in ['admin', 'manager']; }
+    function isDoor() { return role() in ['admin', 'manager', 'bouncer']; }
+
+    function logPath(e, id) { return /databases/$(db)/documents/events/$(e)/log/$(id); }
+    function shardPath(e, uid) { return /databases/$(db)/documents/events/$(e)/shards/$(uid); }
+    function moneyPath(e, uid) { return /databases/$(db)/documents/events/$(e)/money/$(uid); }
+
+    function validPrice(p) { return p is int && p >= 1 && p <= 100; }
+    function validLink(l) {
+      return l is string && (l == '' || l.matches('^https://app[.]hi[.]events/check-in/cil_[A-Za-z0-9]+(#scan)?$'));
+    }
+
+    // ---------- Comptes ----------
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isActive());
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['username', 'name', 'role', 'createdAt'])
+        && request.resource.data.role in ['admin', 'manager', 'bouncer', 'viewer', 'disabled']
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 2 && request.resource.data.username.size() <= 30
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 50;
+      allow delete: if false;
+    }
+
+    match /events/{e} {
+      // ---------- Événement (lisible par le Viewer) ----------
+      allow read: if isActive();
+      allow create: if isAdmin()
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 1 && request.resource.data.capacity <= 300;
+      allow update: if isManager()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capacity', 'salesOpen', 'forceSales'])
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 1 && request.resource.data.capacity <= 300
+        && request.resource.data.salesOpen is bool && request.resource.data.forceSales is bool;
+      allow delete: if false;
+
+      // ---------- Configuration privée (jamais le Viewer) ----------
+      function validConfig(d) {
+        return d.priceMode in ['auto', 'locked']
+          && validPrice(d.doorPrices.student) && validPrice(d.doorPrices.other)
+          && validLink(d.checkinLinks.student) && validLink(d.checkinLinks.regular)
+          && d.params is map && d.pricing is map;
+      }
+      match /private/{doc} {
+        allow read: if isDoor();
+        allow create: if isAdmin() && doc == 'config' && validConfig(request.resource.data);
+        allow update: if doc == 'config' && validConfig(request.resource.data) && (
+          (isManager() && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['priceMode', 'doorPrices', 'params', 'pricing']))
+          || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['priceMode', 'doorPrices', 'params', 'pricing', 'checkinLinks'])));
+        allow delete: if false;
+      }
+
+      // ---------- Effet d'une opération sur un compteur (tableau du §7) ----------
+      function effectOf(L) {
+        return {
+          'staff': L.type == 'staff' ? 1 : 0,
+          'saleStudent': L.type == 'sale' ? L.qty.student : 0,
+          'saleOther': L.type == 'sale' ? L.qty.other : 0,
+          'exit': L.type == 'exit' ? 1 : 0,
+          'reentry': L.type == 'reentry' ? 1 : 0,
+          'adjust': L.type == 'adjust' ? L.delta : 0,
+          'exitW': L.type == 'exit' ? L.w : 0
+        };
+      }
+      function amount(L) { return L.qty.student * L.prices.student + L.qty.other * L.prices.other; }
+      // Opération d'origine pour une annulation, sinon l'opération elle-même.
+      function baseOp(e, L) { return L.type == 'void' ? get(logPath(e, L.ref)).data : L; }
+      function sign(L) { return L.type == 'void' ? -1 : 1; }
+      function lastOpAfter(e) { return getAfter(logPath(e, request.resource.data.lastOp)).data; }
+
+      // ---------- Compteurs par utilisateur ----------
+      function shardApplied(o, n, d, s) {
+        return n.staff == o.staff + s * d.staff
+          && n.saleStudent == o.saleStudent + s * d.saleStudent
+          && n.saleOther == o.saleOther + s * d.saleOther
+          && n.exit == o.exit + s * d.exit
+          && n.reentry == o.reentry + s * d.reentry
+          && n.adjust == o.adjust + s * d.adjust
+          && n.exitW == o.exitW + s * d.exitW;
+      }
+      match /shards/{uid} {
+        allow read: if isActive();
+        allow create: if isDoor() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['staff', 'saleStudent', 'saleOther', 'exit', 'reentry', 'adjust', 'exitW', 'lastOp'])
+          && request.resource.data.staff == 0 && request.resource.data.saleStudent == 0
+          && request.resource.data.saleOther == 0 && request.resource.data.exit == 0
+          && request.resource.data.reentry == 0 && request.resource.data.adjust == 0
+          && request.resource.data.exitW == 0 && request.resource.data.lastOp == '';
+        allow update: if isDoor() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['staff', 'saleStudent', 'saleOther', 'exit', 'reentry', 'adjust', 'exitW', 'lastOp'])
+          && request.resource.data.lastOp is string
+          && !exists(logPath(e, request.resource.data.lastOp))
+          && existsAfter(logPath(e, request.resource.data.lastOp))
+          && lastOpAfter(e).uid == request.auth.uid
+          && shardApplied(resource.data, request.resource.data, effectOf(baseOp(e, lastOpAfter(e))), sign(lastOpAfter(e)));
+        allow delete: if false;
+      }
+
+      // ---------- Revenus (Manager et Admin seulement) ----------
+      match /money/{uid} {
+        allow read: if isManager();
+        allow create: if isDoor() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['revenue', 'lastOp'])
+          && request.resource.data.revenue == 0 && request.resource.data.lastOp == '';
+        allow update: if isDoor() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['revenue', 'lastOp'])
+          && request.resource.data.lastOp is string
+          && !exists(logPath(e, request.resource.data.lastOp))
+          && existsAfter(logPath(e, request.resource.data.lastOp))
+          && baseOp(e, lastOpAfter(e)).type == 'sale'
+          && request.resource.data.revenue == resource.data.revenue + sign(lastOpAfter(e)) * amount(baseOp(e, lastOpAfter(e)));
+        allow delete: if false;
+      }
+
+      // ---------- Journal immuable ----------
+      function head(L) { return L.uid == request.auth.uid && L.at == request.time && L.clientAt is timestamp; }
+      function saleOk(L) {
+        return L.keys().hasOnly(['type', 'uid', 'at', 'clientAt', 'qty', 'prices'])
+          && L.qty.keys().hasOnly(['student', 'other']) && L.prices.keys().hasOnly(['student', 'other'])
+          && L.qty.student is int && L.qty.other is int && L.qty.student >= 0 && L.qty.other >= 0
+          && L.qty.student + L.qty.other >= 1 && L.qty.student + L.qty.other <= 10
+          && validPrice(L.prices.student) && validPrice(L.prices.other);
+      }
+      function voidOk(e, opId, L) {
+        return L.keys().hasOnly(['type', 'uid', 'at', 'clientAt', 'ref'])
+          && L.ref is string && opId == 'void_' + L.ref
+          && exists(logPath(e, L.ref))
+          && get(logPath(e, L.ref)).data.type != 'void'
+          && (isManager() || (get(logPath(e, L.ref)).data.uid == request.auth.uid
+                && get(logPath(e, L.ref)).data.type != 'adjust'
+                && request.time < get(logPath(e, L.ref)).data.at + duration.value(30, 's')))
+          && (get(logPath(e, L.ref)).data.type != 'sale'
+                || getAfter(moneyPath(e, request.auth.uid)).data.lastOp == opId);
+      }
+      function typeOk(e, opId, L) {
+        return ((L.type == 'staff' || L.type == 'reentry') && L.keys().hasOnly(['type', 'uid', 'at', 'clientAt']))
+          || (L.type == 'exit' && L.keys().hasOnly(['type', 'uid', 'at', 'clientAt', 'w'])
+                && L.w is number && L.w > 0 && L.w <= 33554432)
+          || (L.type == 'sale' && saleOk(L) && getAfter(moneyPath(e, request.auth.uid)).data.lastOp == opId)
+          || (L.type == 'adjust' && isManager() && L.keys().hasOnly(['type', 'uid', 'at', 'clientAt', 'delta', 'reason'])
+                && L.delta is int && L.delta != 0 && L.delta >= -50 && L.delta <= 50
+                && L.reason is string && L.reason.size() >= 1 && L.reason.size() <= 200)
+          || (L.type == 'void' && voidOk(e, opId, L));
+      }
+      match /log/{opId} {
+        allow read: if isManager();
+        allow create: if isDoor()
+          && head(request.resource.data)
+          && getAfter(shardPath(e, request.auth.uid)).data.lastOp == opId
+          && typeOk(e, opId, request.resource.data);
+        allow update, delete: if false;
+      }
+    }
+  }
+}
