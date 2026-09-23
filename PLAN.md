@@ -271,6 +271,7 @@ Limite assumée : la protection des détenteurs de billets est de 95 %, pas de 1
 
 ## 10. Worker Hi.Events (`capaflow-hievents`)
 
+- Adresse : `https://capaflow-hievents.lcote2024.workers.dev/counts` (déployé le 2026-09-23, phase 0 validée A0.1–A0.4).
 - Une seule route : `GET /counts`. Tout le reste renvoie 404.
 - Secrets Wrangler : `LIST_STUDENT` et `LIST_REGULAR`, les IDs des listes de check-in, fournis par l'utilisateur et **jamais commités**. Variable : `ALLOWED_ORIGIN = https://<compte>.github.io`.
 - Appelle en parallèle `https://api.hi.events/public/check-in-lists/{id}` et lit `data.total_attendees` et `data.checked_in_attendees`.
@@ -342,5 +343,6 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Tests d'écran avec Testing Library + jsdom |
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
+| 2026-09-23 | Repo public `PotatoQc/capaflow` créé ; Worker déployé et validé (A0.1–A0.4) ; ALLOWED_ORIGIN = `https://potatoqc.github.io` |
 | 2026-09-22 | Vente de plusieurs billets : compteurs Étudiant et Autre dans une même vente, plafond min(10, V) ; type unique `sale` (remplace `sale_student` / `sale_other`) |
 | 2026-09-22 | Moteur (§9) et ses tests faits avant la phase 0, pour que la maquette calcule V en direct. Les données restent celles de la démo jusqu'à la phase 1 |

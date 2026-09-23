@@ -1,0 +1,7 @@
+name = "capaflow-hievents"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Les IDs des listes de check-in sont des secrets Wrangler (LIST_STUDENT, LIST_REGULAR), jamais dans ce repo public.
+[vars]
+ALLOWED_ORIGIN = "https://potatoqc.github.io"
