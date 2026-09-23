@@ -1,0 +1,8 @@
+node_modules
+dist
+.env*
+*.env
+*adminsdk*.json
+*service-account*.json
+firebase-debug.log
+.wrangler
