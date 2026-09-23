@@ -343,6 +343,9 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Tests d'écran avec Testing Library + jsdom |
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
+| 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-23 | Bouton « Déconnexion » dans l'en-tête (Manager, Admin, Viewer), nécessaire avec la vraie connexion |
+| 2026-09-23 | App Web Firebase créée par API ; config publique en variables GitHub Actions ; Pages activé en mode workflow |
 | 2026-09-23 | Repo public `PotatoQc/capaflow` créé ; Worker déployé et validé (A0.1–A0.4) ; ALLOWED_ORIGIN = `https://potatoqc.github.io` |
 | 2026-09-22 | Vente de plusieurs billets : compteurs Étudiant et Autre dans une même vente, plafond min(10, V) ; type unique `sale` (remplace `sale_student` / `sale_other`) |
 | 2026-09-22 | Moteur (§9) et ses tests faits avant la phase 0, pour que la maquette calcule V en direct. Les données restent celles de la démo jusqu'à la phase 1 |
