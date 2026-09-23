@@ -69,8 +69,9 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
 
   it('dates limites d’âge au 25 septembre', () => {
     renderPorte();
-    expect(screen.getByText(/né\(e\) le 25\/09\/2008 ou avant/)).toBeTruthy();
-    expect(screen.getByText(/né\(e\) le 25\/09\/2009 ou avant/)).toBeTruthy();
+    expect(screen.getByText('25/09/2008')).toBeTruthy();
+    expect(screen.getByText('25/09/2009')).toBeTruthy();
+    expect(screen.queryByText(/ou avant/)).toBeNull();
   });
 
   it('boutons de check-in toujours visibles, actifs une fois les liens configurés', () => {

@@ -112,7 +112,7 @@ Couleurs : fond `#0B0B0F`, surfaces `#17171F`, texte `#F5F5F7`, vert `#22C55E`, 
 - Chaque clic : flash de 300 ms (vert pour +, rouge pour −) et vibration de 30 ms si le téléphone la supporte (Android).
 - L'écran reste allumé (Wake Lock, redemandé au retour sur la page).
 - **Alerte de capacité** : si O ≥ C, un bandeau rouge clignotant s'affiche sous l'en-tête (« SALLE PLEINE » si O = C, « DÉPASSEMENT : +N » si O > C) et l'occupation passe en rouge. L'app ne bloque pas les entrées (les scans se font dans Hi.Events) ; la vente est déjà `COMPLET` car V ≤ 0.
-- **Âge** : ligne sous l'en-tête, calculée à partir du 25 sept. 2026 : « 18 ans + : né(e) le 25/09/2008 ou avant · 17 ans + : né(e) le 25/09/2009 ou avant » (format jj/mm/aaaa).
+- **Âge** : ligne sous l'en-tête, calculée à partir du 25 sept. 2026 : « 18 ans + » suivi de « 25/09/2008 », « 17 ans + » suivi de « 25/09/2009 » : la date seule (format jj/mm/aaaa), sans « né(e) le » ni « ou avant ».
 - **Check-in** : boutons « Check-in étudiant ↗ » et « Check-in régulier ↗ » au-dessus de « + Staff », qui ouvrent les pages de check-in Hi.Events dans un nouvel onglet. Toujours affichés ; grisés avec « lien à configurer » tant que l'Admin n'a pas enregistré le lien (§6.3).
 - **Staff** : +1 pour l'arrivée d'un membre du staff. Ses sorties et réentrées passent par les boutons normaux.
 - **Vente** : feuille avec deux cartes, Étudiant et Autre, chacune avec son **prix appliqué** (automatique ou figé, §6.3, **figé à l'ouverture de la feuille**) et un compteur − / + (0 au départ). Total des billets ≤ min(10, V au moment de l'ouverture) ; « + » grisé au plafond. Bouton « Confirmer N billet(s) · X $ » (grisé si N = 0) → **une seule opération** `sale` pour tout le groupe, donc « Annuler dernier » annule le groupe entier.
@@ -351,6 +351,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-23 | Écran Porte : dates d'âge affichées seules (sans « né(e) le … ou avant ») |
 | 2026-09-23 | **Webhooks Hi.Events** (retirés du hors-périmètre à la demande de l'utilisateur) : scans comptés en ~1 s via Worker → Firestore `scans/totals`, compte technique `worker` aux droits minimaux ; appel toutes les 15 s conservé en secours |
 | 2026-09-23 | Domaine **porte.southevents.ca** (CNAME DNS only vers GitHub Pages), site à la racine, Worker limité à cette origine |
 | 2026-09-23 | Écran Porte : nombre de billets encore disponibles (V) affiché sur le bouton Vente |

@@ -113,8 +113,8 @@ export default function Porte() {
       </header>
 
       <div className="age-line">
-        <span><strong>18 ans +</strong> né(e) le {bornOnOrBefore(18)} ou avant</span>
-        <span><strong>17 ans +</strong> né(e) le {bornOnOrBefore(17)} ou avant</span>
+        <span><strong>18 ans +</strong>{bornOnOrBefore(18)}</span>
+        <span><strong>17 ans +</strong>{bornOnOrBefore(17)}</span>
       </div>
 
       {over >= 0 && <p className="capacity-alert">{over === 0 ? 'SALLE PLEINE' : `DÉPASSEMENT : +${over}`}</p>}
