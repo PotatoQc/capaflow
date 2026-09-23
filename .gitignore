@@ -4,5 +4,5 @@ dist
 *.env
 *adminsdk*.json
 *service-account*.json
-firebase-debug.log
+*-debug.log
 .wrangler
