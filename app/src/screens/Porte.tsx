@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { saleTotal, useDemo, type OpType, type Sale } from '../demo/DemoContext';
-import { bornOnOrBefore } from '../demo/scenarios';
+import { saleTotal, useApp, type OpType, type Sale } from '../data/AppContext';
+import { bornOnOrBefore } from '../data/event';
 import type { SalesState } from '../engine/computeState';
 import { useWakeLock } from './useWakeLock';
 
@@ -28,7 +28,7 @@ const CATEGORIES = [
 ] as const;
 
 export default function Porte() {
-  const { role, state, record, voidEntry } = useDemo();
+  const { role, state, record, voidEntry } = useApp();
   const [flash, setFlash] = useState<{ kind: 'plus' | 'minus'; key: number } | null>(null);
   const [last, setLast] = useState<{ id: string; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());

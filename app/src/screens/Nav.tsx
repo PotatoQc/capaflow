@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useAlerts } from '../alerts/AlertProvider';
-import { useDemo } from '../demo/DemoContext';
-import { ROLE_LABEL } from '../demo/scenarios';
+import { useApp } from '../data/AppContext';
+import { ROLE_LABEL } from '../data/event';
 
 const LINKS = [
   { to: '/tableau', label: 'Tableau' },
@@ -10,7 +10,7 @@ const LINKS = [
 ];
 
 export default function Nav() {
-  const { role, state } = useDemo();
+  const { role, state, signOut } = useApp();
   const { soundOn, toggleSound } = useAlerts();
   const canManage = role === 'admin' || role === 'manager';
 
@@ -34,6 +34,7 @@ export default function Nav() {
         )}
         <span className="clock">{state.clock}</span>
         <span className="badge">{ROLE_LABEL[role]}</span>
+        <button className="badge sound" onClick={signOut}>Déconnexion</button>
       </div>
     </header>
   );

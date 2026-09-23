@@ -3,28 +3,25 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AlertProvider } from '../alerts/AlertProvider';
-import { DemoProvider, useDemo } from '../demo/DemoContext';
+import { useApp } from '../data/AppContext';
+import type { Role } from '../data/event';
+import { MemoryProvider } from '../test/MemoryProvider';
 import Gestion from './Gestion';
 
 function Probe() {
-  const { state, setRole } = useDemo();
-  return (
-    <>
-      <span data-testid="cap">{state.capacity}</span>
-      <button onClick={() => setRole('admin')}>admin-test</button>
-    </>
-  );
+  const { state } = useApp();
+  return <span data-testid="cap">{state.capacity}</span>;
 }
 
-const renderGestion = () =>
+const renderGestion = (role: Role = 'manager') =>
   render(
     <MemoryRouter>
-      <DemoProvider>
+      <MemoryProvider role={role}>
         <AlertProvider>
           <Gestion />
           <Probe />
         </AlertProvider>
-      </DemoProvider>
+      </MemoryProvider>
     </MemoryRouter>,
   );
 
@@ -67,8 +64,7 @@ describe('Écran Gestion', () => {
   });
 
   it('liens de check-in : seuls les liens Hi.Events sont acceptés', () => {
-    renderGestion();
-    fireEvent.click(screen.getByText('admin-test'));
+    renderGestion('admin');
     const field = screen.getByLabelText('Lien check-in étudiant');
     const save = screen.getByRole('button', { name: 'Enregistrer les liens' }) as HTMLButtonElement;
     for (const bad of ['javascript:alert(1)', 'https://evil.example/check-in/cil_x', 'http://app.hi.events/check-in/cil_x']) {
@@ -80,8 +76,7 @@ describe('Écran Gestion', () => {
   });
 
   it('le dernier Admin ne peut pas être désactivé', () => {
-    renderGestion();
-    fireEvent.click(screen.getByText('admin-test'));
+    renderGestion('admin');
     const buttons = screen.getAllByRole('button', { name: 'Désactiver' }) as HTMLButtonElement[];
     expect(buttons[0].disabled).toBe(true);
     expect(buttons[1].disabled).toBe(false);

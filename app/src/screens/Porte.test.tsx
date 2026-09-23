@@ -2,13 +2,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DemoProvider, useDemo } from '../demo/DemoContext';
+import { useApp } from '../data/AppContext';
+import { MemoryProvider } from '../test/MemoryProvider';
 import Porte from './Porte';
 
 const STUDENT_LINK = 'https://app.hi.events/check-in/cil_test123#scan';
 
 function LockPrices() {
-  const { lockDoorPrices, setCheckinLinks } = useDemo();
+  const { lockDoorPrices, setCheckinLinks } = useApp();
   return (
     <>
       <button onClick={() => lockDoorPrices(10, 30)}>figer-test</button>
@@ -20,10 +21,10 @@ function LockPrices() {
 const renderPorte = () =>
   render(
     <MemoryRouter>
-      <DemoProvider>
+      <MemoryProvider>
         <Porte />
         <LockPrices />
-      </DemoProvider>
+      </MemoryProvider>
     </MemoryRouter>,
   );
 

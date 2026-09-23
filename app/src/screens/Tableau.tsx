@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import Nav from './Nav';
-import { useDemo } from '../demo/DemoContext';
-import { TICKETS } from '../demo/scenarios';
+import { useApp } from '../data/AppContext';
+import { TICKETS } from '../data/event';
 
 type TileProps = { label: string; value: string | number; suffix?: string; ratio?: number; tone?: 'yellow' | 'red' };
 
@@ -22,12 +22,13 @@ function Tile({ label, value, suffix, ratio, tone }: TileProps) {
 }
 
 export default function Tableau() {
-  const { role, state: s } = useDemo();
+  const { role, state: s } = useApp();
   const [tv, setTv] = useState(false);
   if (role === 'bouncer') return <Navigate to="/porte" replace />;
 
   const l = s.light;
   const age = s.scanAgeS;
+  const ageLabel = Number.isFinite(age) ? `${age} s` : '—';
   const over = s.occupancy - s.capacity;
   const heroLabel = s.sellable > 0 ? 'VOUS POUVEZ VENDRE' : s.sellable < 0 ? 'SURRÉSERVATION PROJETÉE' : '';
   const suggestionDiffers = s.suggested && (s.suggested.student !== s.doorStudent || s.suggested.other !== s.doorOther);
@@ -76,7 +77,7 @@ export default function Tableau() {
 
       <div className="banners">
         {capacityBanner}
-        {s.salesState === 'SUSPENDU' && <div className="banner red">SUSPENDU — scans Hi.Events non mis à jour depuis {age} s</div>}
+        {s.salesState === 'SUSPENDU' && <div className="banner red">SUSPENDU — scans Hi.Events non mis à jour ({Number.isFinite(age) ? `depuis ${age} s` : 'aucune donnée reçue'})</div>}
         {!s.salesOpen && <div className="banner grey">FERMÉ — ventes fermées</div>}
         {s.forceSales && <div className="banner accent">FORÇAGE ACTIF — ventes permises malgré des scans périmés</div>}
       </div>
@@ -112,7 +113,7 @@ export default function Tableau() {
         <Tile label="Réserve" value={Math.round(s.reserve)} />
         <Tile label="Attendus d'ici 1 h" value={`~${Math.round(s.expected1h)}`} />
         <Tile label="Revenus porte" value={`${s.revenue} $`} />
-        <Tile label="Âge des scans" value={`${age} s`} tone={age > 60 ? 'red' : age > 30 ? 'yellow' : undefined} />
+        <Tile label="Âge des scans" value={ageLabel} tone={age > 60 ? 'red' : age > 30 ? 'yellow' : undefined} />
       </section>
     </div>
   );

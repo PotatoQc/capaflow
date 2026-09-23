@@ -1,24 +1,14 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import Nav from './Nav';
-import { TYPE_LABEL, useDemo } from '../demo/DemoContext';
+import { TYPE_LABEL, useApp, type Account } from '../data/AppContext';
 import { arrivalFraction } from '../engine/computeState';
-import { CURVE_HOURS, DEFAULT_CAPACITY, ROLE_LABEL, clock, localTimeToUtc, type Role } from '../demo/scenarios';
+import { CURVE_HOURS, DEFAULT_CAPACITY, ROLE_LABEL, clock, localTimeToUtc, type AccountRole, type Role } from '../data/event';
 import ConfirmDialog from './ConfirmDialog';
 
-type AccountRole = Role | 'disabled';
-type Account = { username: string; name: string; role: AccountRole };
 type Confirm = { title: string; message: string; label: string; onConfirm: () => void; onCancel?: () => void };
 
 const ACCOUNT_ROLES: AccountRole[] = ['admin', 'manager', 'bouncer', 'viewer', 'disabled'];
-const SEED_ACCOUNTS: Account[] = [
-  { username: 'admin', name: 'Organisateur', role: 'admin' },
-  { username: 'manager1', name: 'Responsable de salle', role: 'manager' },
-  { username: 'porte1', name: 'Porte principale', role: 'bouncer' },
-  { username: 'porte2', name: 'Porte arrière', role: 'bouncer' },
-  { username: 'securite', name: "Sécurité de l'école", role: 'viewer' },
-];
-
 // Seul format accepté : un lien `javascript:` ou vers un autre site serait dangereux derrière un bouton.
 const CHECKIN_LINK = /^https:\/\/app\.hi\.events\/check-in\/cil_[A-Za-z0-9]+(#scan)?$/;
 
@@ -34,8 +24,8 @@ const stepDelta = (d: number, by: number) => {
 export default function Gestion() {
   const {
     role, state, log, setCapacity, setSalesOpen, setForceSales, lockDoorPrices, setPriceMode, setCheckinLinks, setParams,
-    setPricing, record, voidEntry,
-  } = useDemo();
+    setPricing, record, voidEntry, accounts, createAccount: addAccount, setAccountRole,
+  } = useApp();
   const [linksDraft, setLinksDraft] = useState(state.checkinLinks);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [capDraft, setCapDraft] = useState(String(state.capacity));
@@ -49,7 +39,6 @@ export default function Gestion() {
   const [base, setBase] = useState(state.pricing.base);
   const [tiers, setTiers] = useState(state.pricing.tiers);
   const [timeRule, setTimeRule] = useState({ from: clock(state.pricing.timeRules[0].from), mult: state.pricing.timeRules[0].mult });
-  const [accounts, setAccounts] = useState<Account[]>(SEED_ACCOUNTS);
   const [draft, setDraft] = useState({ username: '', name: '', role: 'bouncer' as Role, password: '' });
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
@@ -170,14 +159,15 @@ export default function Gestion() {
     if (accounts.some((a) => a.username === username)) return setError('Cet identifiant existe déjà.');
     if (!draft.name.trim()) return setError('Le nom est requis.');
     if (draft.password.length < 6) return setError('Mot de passe : 6 caractères minimum.');
-    setAccounts((a) => [...a, { username, name: draft.name.trim(), role: draft.role }]);
-    setDraft({ username: '', name: '', role: 'bouncer', password: '' });
     setError('');
-    save('accounts');
+    addAccount({ username, name: draft.name.trim(), role: draft.role, password: draft.password })
+      .then(() => {
+        setDraft({ username: '', name: '', role: 'bouncer', password: '' });
+        save('accounts');
+      })
+      .catch((e: { code?: string }) =>
+        setError(e.code === 'auth/email-already-in-use' ? 'Cet identifiant existe déjà.' : 'La création du compte a échoué.'));
   };
-
-  const setAccountRole = (username: string, r: AccountRole) =>
-    setAccounts((a) => a.map((x) => (x.username === username ? { ...x, role: r } : x)));
 
   const linksError = [linksDraft.student, linksDraft.regular].every((l) => l.trim() === '' || CHECKIN_LINK.test(l.trim()))
     ? ''
@@ -474,12 +464,12 @@ export default function Gestion() {
                 </thead>
                 <tbody>
                   {accounts.map((a) => (
-                    <tr key={a.username}>
+                    <tr key={a.uid}>
                       <td>{a.username}</td>
                       <td>{a.name}</td>
                       <td>
                         <select className="cell-input" style={{ width: 130, textAlign: 'left' }} value={a.role}
-                          disabled={isLastAdmin(a)} onChange={(e) => setAccountRole(a.username, e.target.value as AccountRole)}>
+                          disabled={isLastAdmin(a)} onChange={(e) => setAccountRole(a.uid, e.target.value as AccountRole)}>
                           {ACCOUNT_ROLES.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
                         </select>
                       </td>
@@ -487,7 +477,7 @@ export default function Gestion() {
                         {a.role === 'disabled' ? (
                           <span className="badge">Désactivé</span>
                         ) : (
-                          <button className="btn btn-sm" disabled={isLastAdmin(a)} onClick={() => setAccountRole(a.username, 'disabled')}>
+                          <button className="btn btn-sm" disabled={isLastAdmin(a)} onClick={() => setAccountRole(a.uid, 'disabled')}>
                             Désactiver
                           </button>
                         )}

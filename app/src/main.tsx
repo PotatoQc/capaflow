@@ -3,17 +3,17 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
 import { AlertProvider } from './alerts/AlertProvider';
-import { DemoProvider } from './demo/DemoContext';
+import { FirebaseProvider } from './data/FirebaseProvider';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
-      <DemoProvider>
+      <FirebaseProvider>
         <AlertProvider>
           <App />
         </AlertProvider>
-      </DemoProvider>
+      </FirebaseProvider>
     </HashRouter>
   </StrictMode>,
 );

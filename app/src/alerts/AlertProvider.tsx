@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useDemo } from '../demo/DemoContext';
+import { useApp } from '../data/AppContext';
 import { useWakeLock } from '../screens/useWakeLock';
 
 // Alertes dans la page (PLAN §6.2) : pas de notification système, peu fiable sur une page web.
@@ -23,7 +23,7 @@ function beep(ctx: AudioContext, count: number) {
 }
 
 export function AlertProvider({ children }: { children: ReactNode }) {
-  const { role, state } = useDemo();
+  const { role, state } = useApp();
   const [soundOn, setSoundOn] = useState(false);
   const audio = useRef<AudioContext | null>(null);
   const previous = useRef<boolean[] | null>(null);
