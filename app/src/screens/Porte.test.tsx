@@ -8,12 +8,16 @@ import Porte from './Porte';
 
 const STUDENT_LINK = 'https://app.hi.events/check-in/cil_test123#scan';
 
+const REGULAR_LINK = 'https://app.hi.events/check-in/cil_test456#scan';
+
 function LockPrices() {
-  const { lockDoorPrices, setCheckinLinks } = useApp();
+  const { lockDoorPrices, setCheckinLinks, setCapacity } = useApp();
   return (
     <>
       <button onClick={() => lockDoorPrices(10, 30)}>figer-test</button>
       <button onClick={() => setCheckinLinks({ student: STUDENT_LINK, regular: '' })}>liens-test</button>
+      <button onClick={() => setCheckinLinks({ student: STUDENT_LINK, regular: REGULAR_LINK })}>liens2-test</button>
+      <button onClick={() => setCapacity(150)}>salle-pleine-test</button>
     </>
   );
 }
@@ -76,13 +80,41 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
 
   it('boutons de check-in toujours visibles, actifs une fois les liens configurés', () => {
     renderPorte();
-    expect(screen.queryByRole('link', { name: /Check-in/ })).toBeNull();
     expect((screen.getByRole('button', { name: /Check-in étudiant/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByText('liens2-test'));
+    const regular = screen.getByRole('link', { name: /Check-in régulier/ }) as HTMLAnchorElement;
+    expect(regular.href).toBe(REGULAR_LINK);
+    expect(regular.rel).toBe('noopener noreferrer');
+    expect((screen.getByRole('button', { name: /Check-in étudiant/ }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('check-in étudiant : rappel de la carte avant d’ouvrir Hi.Events', () => {
+    renderPorte();
     fireEvent.click(screen.getByText('liens-test'));
-    const link = screen.getByRole('link', { name: /Check-in étudiant/ }) as HTMLAnchorElement;
-    expect(link.href).toBe(STUDENT_LINK);
-    expect(link.rel).toBe('noopener noreferrer');
-    expect((screen.getByRole('button', { name: /Check-in régulier/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Check-in étudiant/ }));
+    expect(screen.getByText('Demandez la carte étudiante AVANT de scanner le billet.')).toBeTruthy();
+    const open = screen.getByRole('link', { name: /Carte vérifiée/ }) as HTMLAnchorElement;
+    expect(open.href).toBe(STUDENT_LINK);
+  });
+
+  it('pas de carte et de la place : vendre 1 billet Autre au prix non-étudiant', () => {
+    renderPorte();
+    fireEvent.click(screen.getByText('liens-test'));
+    fireEvent.click(screen.getByRole('button', { name: /Check-in étudiant/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pas de carte étudiante' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Vendre 1 billet Autre · 23 $' }));
+    expect(screen.getByLabelText('Billets Autre').textContent).toBe('1');
+    expect(screen.getByRole('button', { name: 'Confirmer 1 billet · 23 $' })).toBeTruthy();
+  });
+
+  it('pas de carte et plus de place : refuser l’entrée', () => {
+    renderPorte();
+    fireEvent.click(screen.getByText('liens-test'));
+    fireEvent.click(screen.getByText('salle-pleine-test'));
+    fireEvent.click(screen.getByRole('button', { name: /Check-in étudiant/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pas de carte étudiante' }));
+    expect(screen.getByText("REFUSER L'ENTRÉE")).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Vendre 1 billet/ })).toBeNull();
   });
 
   it('bandeau « Nouveau prix » quand les prix changent', () => {

@@ -33,6 +33,8 @@ export default function Porte() {
   const [last, setLast] = useState<{ id: string; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  // Rappel « carte étudiante » avant le check-in étudiant (PLAN §6.1).
+  const [cardCheck, setCardCheck] = useState<'ask' | 'nocard' | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -74,11 +76,11 @@ export default function Porte() {
     setFlash({ kind: 'minus', key: Date.now() });
   };
 
-  const openSale = () => {
+  const openSale = (preset?: { other: number }) => {
     if (sales !== 'OUVERT') return;
     setSheet({
       student: 0,
-      other: 0,
+      other: preset?.other ?? 0,
       priceStudent: state.doorStudent,
       priceOther: state.doorOther,
       max: Math.min(MAX_PER_SALE, state.sellable),
@@ -132,7 +134,7 @@ export default function Porte() {
         <button className="zone reentry" onClick={() => act('reentry', 'plus')}>
           <span className="zone-icon">↺</span>RÉENTRÉE<small>bracelet</small>
         </button>
-        <button className={`zone sale ${sales !== 'OUVERT' ? 'disabled' : ''}`} onClick={openSale} aria-disabled={sales !== 'OUVERT'}>
+        <button className={`zone sale ${sales !== 'OUVERT' ? 'disabled' : ''}`} onClick={() => openSale()} aria-disabled={sales !== 'OUVERT'}>
           {sales === 'OUVERT' ? (
             <>
               <span className="zone-icon">$</span>VENTE
@@ -150,7 +152,9 @@ export default function Porte() {
 
       <nav className="checkin-links" aria-label="Check-in Hi.Events">
         {CHECKINS.map(({ key, label }) =>
-          state.checkinLinks[key] ? (
+          key === 'student' && state.checkinLinks.student ? (
+            <button key={key} className="btn" onClick={() => setCardCheck('ask')}>{label} ↗</button>
+          ) : state.checkinLinks[key] ? (
             <a key={key} className="btn" href={state.checkinLinks[key]} target="_blank" rel="noopener noreferrer">
               {label} ↗
             </a>
@@ -192,6 +196,39 @@ export default function Porte() {
               {count > 0 ? `Confirmer ${count} billet${count > 1 ? 's' : ''} · ${saleTotal(sheet)} $` : 'Choisir des billets'}
             </button>
             <button className="btn btn-ghost" onClick={() => setSheet(null)}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {cardCheck && (
+        <div className="sheet-backdrop" onClick={() => setCardCheck(null)}>
+          <div className="sheet" role="alertdialog" aria-label="Carte étudiante" onClick={(e) => e.stopPropagation()}>
+            {cardCheck === 'ask' ? (
+              <>
+                <h2>Carte étudiante obligatoire</h2>
+                <p className="card-warn">Demandez la carte étudiante AVANT de scanner le billet.</p>
+                <a className="btn btn-primary btn-lg link-btn" href={state.checkinLinks.student} target="_blank"
+                  rel="noopener noreferrer" onClick={() => setCardCheck(null)}>
+                  Carte vérifiée : ouvrir le check-in ↗
+                </a>
+                <button className="btn btn-lg" onClick={() => setCardCheck('nocard')}>Pas de carte étudiante</button>
+              </>
+            ) : sales === 'OUVERT' ? (
+              <>
+                <h2>Pas de carte : faire payer</h2>
+                <p className="card-warn">Ne pas scanner son billet étudiant. Prix non-étudiant : {state.doorOther} $.</p>
+                <button className="btn btn-primary btn-lg" onClick={() => { setCardCheck(null); openSale({ other: 1 }); }}>
+                  Vendre 1 billet Autre · {state.doorOther} $
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>Pas de carte : refuser l'entrée</h2>
+                <p className="card-refuse">REFUSER L'ENTRÉE</p>
+                <p className="hint">{SALES_HINT[sales]} : impossible de lui vendre un billet non-étudiant.</p>
+              </>
+            )}
+            <button className="btn btn-ghost" onClick={() => setCardCheck(null)}>Fermer</button>
           </div>
         </div>
       )}
