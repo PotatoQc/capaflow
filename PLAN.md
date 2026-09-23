@@ -32,7 +32,7 @@
 
 | Couche | Choix |
 |---|---|
-| Frontend | React + Vite + TypeScript, **page web sans installation** : cache hors ligne par service worker (`vite-plugin-pwa`, sans manifeste ni icônes d'installation), React Router en **HashRouter**, `base: '/capaflow/'` |
+| Frontend | React + Vite + TypeScript, **page web sans installation** : cache hors ligne par service worker (`vite-plugin-pwa`, sans manifeste ni icônes d'installation), React Router en **HashRouter**, `base: '/'`, domaine **porte.southevents.ca** |
 | Données | Firebase JS SDK modulaire : Auth (courriel + mot de passe) ; Firestore avec `persistentLocalCache` + `persistentMultipleTabManager`, région `northamerica-northeast1` (Montréal) |
 | Hi.Events | Cloudflare Worker en TypeScript (Wrangler), nom `capaflow-hievents` |
 | Tests | Vitest (moteur, intégration) ; `@testing-library/react` + jsdom (parcours d'écran) ; `@firebase/rules-unit-testing` + Firebase Emulator (règles) |
@@ -345,6 +345,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-23 | Domaine **porte.southevents.ca** (CNAME DNS only vers GitHub Pages), site à la racine, Worker limité à cette origine |
 | 2026-09-23 | Écran Porte : nombre de billets encore disponibles (V) affiché sur le bouton Vente |
 | 2026-09-23 | Bouton « Déconnexion » dans l'en-tête (Manager, Admin, Viewer), nécessaire avec la vraie connexion |
 | 2026-09-23 | App Web Firebase créée par API ; config publique en variables GitHub Actions ; Pages activé en mode workflow |
