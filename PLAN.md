@@ -26,7 +26,7 @@
 3. Appliquer automatiquement un prix dynamique selon V et l'heure ; le Manager ou l'Admin peut le figer.
 4. Gérer les accès par rôle.
 
-**Hors périmètre v1 (interdit sans accord)** : multi-organisation/SaaS, facturation, paiement en ligne, scan QR dans l'app, webhooks Hi.Events, Cloud Functions, plan Blaze, notifications push, export comptable, autre langue que le français.
+**Hors périmètre v1 (interdit sans accord)** : multi-organisation/SaaS, facturation, paiement en ligne, scan QR dans l'app, Cloud Functions, plan Blaze, notifications push, export comptable, autre langue que le français.
 
 ## 3. Stack imposée
 
@@ -171,6 +171,9 @@ Couleurs : fond `#0B0B0F`, surfaces `#17171F`, texte `#F5F5F7`, vert `#22C55E`, 
              tiers: [ { min: 30, mult: 1 }, { min: 15, mult: 1.25 }, { min: 5, mult: 1.5 }, { min: 1, mult: 2 } ],
              timeRules: [ { from: 2026-09-26T05:00:00Z, mult: 0.8 } ] }      ← 01:00 heure locale
 
+/events/neon-party/scans/totals      totaux Hi.Events poussés par le Worker (webhook)
+  student · regular : int · at : heure serveur
+
 /events/neon-party/shards/{uid}      un compteur par utilisateur (sans argent)
   staff · saleStudent · saleOther · exit · reentry · adjust : int
   exitW : number · lastOp : string
@@ -212,6 +215,7 @@ Courbe d'arrivée par défaut (F = part cumulée des arrivées des détenteurs d
 - `users` : chacun lit son propre document ; tout compte actif lit les autres ; seul l'Admin écrit.
 - `events/neon-party` : lecture par tout compte actif ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `capacity` (entier de 1 à 300), `salesOpen` et `forceSales` ; suppression interdite.
 - `private/config` : lecture par Admin, Manager et Bouncer (**pas le Viewer**) ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `priceMode`, `doorPrices` (deux entiers de 1 à 100), `params` et `pricing` ; `checkinLinks` modifiable par l'Admin seulement, chaque valeur vide ou conforme à `^https://app\.hi\.events/check-in/cil_[A-Za-z0-9]+(#scan)?$`.
+- `scans/totals` : lecture par tout compte actif ; écriture seulement par le compte technique de rôle `worker` (champs `student`, `regular` entiers ≥ 0 et `at == request.time`). Ce rôle ne peut rien lire ni écrire d'autre.
 - `money/{uid}` : lecture par Manager et Admin seulement. Création par le propriétaire à 0. Mise à jour par le propriétaire, dans le même lot qu'un `log` de vente ou d'annulation de vente (`getAfter`), avec une variation égale au montant du log (Σ qty × prices).
 - `shards/{uid}` : lecture par tout compte actif. Création par le propriétaire (Admin, Manager ou Bouncer) avec tous les compteurs à 0. Mise à jour par le propriétaire seulement, et seulement si `log/{lastOp}` n'existait pas avant le lot et existe après (`getAfter`), avec des variations qui correspondent exactement au type (tableau du §7). Suppression interdite.
 - `log/{opId}` : lecture par Manager et Admin. **Création seulement**, jamais de modification ni de suppression, avec `uid == auth.uid`, `at == request.time`, un type permis par le rôle et `getAfter(shard).lastOp == opId`.
@@ -273,7 +277,9 @@ Limite assumée : la protection des détenteurs de billets est de 95 %, pas de 1
 ## 10. Worker Hi.Events (`capaflow-hievents`)
 
 - Adresse : `https://capaflow-hievents.lcote2024.workers.dev/counts` (déployé le 2026-09-23, phase 0 validée A0.1–A0.4).
-- Une seule route : `GET /counts`. Tout le reste renvoie 404.
+- Routes : `GET /counts` (lu par l'app toutes les 15 s, en secours) et `POST /hievents-webhook` (appelé par Hi.Events à chaque `checkin.created` / `checkin.deleted`). Tout le reste renvoie 404.
+- **Webhook** : signature HMAC-SHA256 hexadécimale du corps brut vérifiée (en-tête `Signature`, secret `WEBHOOK_SECRET`), sinon 401. Réponse immédiate (Hi.Events n'attend que 3 s), puis en arrière-plan : relecture des 2 listes et écriture de `scans/totals` avec le compte `worker@example.com` (secret `WORKER_PASSWORD`). L'app écoute ce document : un scan apparaît en ~1 s.
+- L'app prend la source la plus récente (webhook ou appel périodique) ; l'âge des scans compte depuis la plus récente des deux.
 - Secrets Wrangler : `LIST_STUDENT` et `LIST_REGULAR`, les IDs des listes de check-in, fournis par l'utilisateur et **jamais commités**. Variable : `ALLOWED_ORIGIN = https://<compte>.github.io`.
 - Appelle en parallèle `https://api.hi.events/public/check-in-lists/{id}` et lit `data.total_attendees` et `data.checked_in_attendees`.
 - Garde le résultat en mémoire 10 s.
@@ -345,6 +351,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-23 | **Webhooks Hi.Events** (retirés du hors-périmètre à la demande de l'utilisateur) : scans comptés en ~1 s via Worker → Firestore `scans/totals`, compte technique `worker` aux droits minimaux ; appel toutes les 15 s conservé en secours |
 | 2026-09-23 | Domaine **porte.southevents.ca** (CNAME DNS only vers GitHub Pages), site à la racine, Worker limité à cette origine |
 | 2026-09-23 | Écran Porte : nombre de billets encore disponibles (V) affiché sur le bouton Vente |
 | 2026-09-23 | Bouton « Déconnexion » dans l'en-tête (Manager, Admin, Viewer), nécessaire avec la vraie connexion |

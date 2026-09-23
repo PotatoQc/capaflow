@@ -2,6 +2,8 @@ name = "capaflow-hievents"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 
-# Les IDs des listes de check-in sont des secrets Wrangler (LIST_STUDENT, LIST_REGULAR), jamais dans ce repo public.
+# Secrets Wrangler, jamais dans ce repo public : LIST_STUDENT, LIST_REGULAR, WEBHOOK_SECRET, WORKER_PASSWORD.
 [vars]
 ALLOWED_ORIGIN = "https://porte.southevents.ca"
+FB_API_KEY = "AIzaSyCTDCi_kNrz-MiyaUNj9LKSto24Boc5sSY"
+FB_PROJECT_ID = "capaflow-a2840"

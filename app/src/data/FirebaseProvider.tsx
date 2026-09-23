@@ -78,6 +78,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [logDocs, setLogDocs] = useState<Map<string, LogDoc>>(new Map());
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [pending, setPending] = useState(0);
+  const [pushed, setPushed] = useState<{ student: number; regular: number; at: number } | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [now, setNow] = useState(() => Date.now());
   const ownOps = useRef(new Map<string, Op>());
@@ -116,6 +117,11 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const unsubs = [
       onSnapshot(eventDoc(db), (s) => setEventData(s.exists() ? (s.data() as EventDoc) : null), () => setEventData(null)),
       onSnapshot(collection(db, 'events', EVENT_ID, 'shards'), (s) => setShards(s.docs.map((d) => d.data() as Totals))),
+      // Totaux poussés par le webhook Hi.Events (~1 s) ; l'appel du Worker toutes les 15 s reste en secours.
+      onSnapshot(doc(db, 'events', EVENT_ID, 'scans', 'totals'), (s) => {
+        const d = s.data({ serverTimestamps: 'estimate' });
+        setPushed(d ? { student: d.student, regular: d.regular, at: (d.at as Timestamp).toMillis() } : null);
+      }, () => setPushed(null)),
     ];
     if (isDoor) unsubs.push(onSnapshot(configDoc(db), (s) => setConfig(s.exists() ? (s.data() as ConfigDoc) : null), () => setConfig(null)));
     if (isManager) {
@@ -147,7 +153,13 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }
 
   const totals = Object.fromEntries(COUNTERS.map((k) => [k, shards.reduce((sum, s) => sum + (s[k] ?? 0), 0)])) as Totals;
-  const scanned = { student: counts?.student ?? 0, regular: counts?.regular ?? 0 };
+  // Source la plus récente entre le webhook et l'appel périodique du Worker.
+  const usePushed = pushed !== null && (fetchedAt === null || pushed.at >= fetchedAt);
+  const scanned = usePushed
+    ? { student: pushed.student, regular: pushed.regular }
+    : { student: counts?.student ?? 0, regular: counts?.regular ?? 0 };
+  const lastScanAt = Math.max(fetchedAt ?? -Infinity, pushed?.at ?? -Infinity);
+  const scansAgeMs = Number.isFinite(lastScanAt) ? now - lastScanAt : Infinity;
   const params = config?.params ?? DEFAULT_PARAMS;
   const pricing = config?.pricing ?? DEFAULT_PRICING;
   const out = computeState({
@@ -156,7 +168,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     capacity: eventData.capacity,
     tickets: eventData.tickets,
     scanned,
-    scansAgeMs: fetchedAt === null ? Infinity : now - fetchedAt,
+    scansAgeMs,
     totals,
     salesOpen: eventData.salesOpen,
     forceSales: eventData.forceSales,
@@ -215,7 +227,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       clock: clock(now),
       scanned,
       revenue,
-      scanAgeS: fetchedAt === null ? Infinity : Math.round((now - fetchedAt) / 1000),
+      scanAgeS: Number.isFinite(scansAgeMs) ? Math.max(0, Math.round(scansAgeMs / 1000)) : Infinity,
       salesOpen: eventData.salesOpen,
       forceSales: eventData.forceSales,
       online,

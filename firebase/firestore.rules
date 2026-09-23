@@ -49,6 +49,16 @@ service cloud.firestore {
         && request.resource.data.salesOpen is bool && request.resource.data.forceSales is bool;
       allow delete: if false;
 
+      // ---------- Totaux Hi.Events poussés par le Worker (webhook) ----------
+      match /scans/{doc} {
+        allow read: if isActive();
+        allow write: if role() == 'worker' && doc == 'totals'
+          && request.resource.data.keys().hasOnly(['student', 'regular', 'at'])
+          && request.resource.data.student is int && request.resource.data.student >= 0
+          && request.resource.data.regular is int && request.resource.data.regular >= 0
+          && request.resource.data.at == request.time;
+      }
+
       // ---------- Configuration privée (jamais le Viewer) ----------
       function validConfig(d) {
         return d.priceMode in ['auto', 'locked']

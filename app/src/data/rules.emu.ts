@@ -13,7 +13,7 @@ import {
 
 let env: RulesTestEnvironment;
 
-const USERS = { admin: 'admin', manager: 'manager', b1: 'bouncer', b2: 'bouncer', v: 'viewer' } as const;
+const USERS = { admin: 'admin', manager: 'manager', b1: 'bouncer', b2: 'bouncer', v: 'viewer', w: 'worker' } as const;
 const CONFIG = {
   priceMode: 'auto',
   doorPrices: { student: 5, other: 15 },
@@ -152,6 +152,26 @@ describe('A1.1 — règles de sécurité', () => {
     await assertFails(updateDoc(configDoc(db('manager')), links('https://app.hi.events/check-in/cil_Abc123')));
     await assertFails(updateDoc(configDoc(db('admin')), links('javascript:alert(1)')));
     await assertSucceeds(updateDoc(configDoc(db('admin')), links('https://app.hi.events/check-in/cil_Abc123#scan')));
+  });
+});
+
+describe('Totaux Hi.Events (webhook)', () => {
+  const totals = (f: Firestore) => doc(f, 'events', EVENT_ID, 'scans', 'totals');
+  const data = { student: 12, regular: 7, at: serverTimestamp() };
+
+  it('seul le compte worker écrit les totaux ; tout compte actif les lit', async () => {
+    await assertSucceeds(setDoc(totals(db('w')), data));
+    await assertFails(setDoc(totals(db('b1')), data));
+    await assertFails(setDoc(totals(db('admin')), data));
+    await assertSucceeds(getDoc(totals(db('v'))));
+  });
+
+  it('le compte worker ne lit ni n’écrit rien d’autre', async () => {
+    const f = db('w');
+    await assertFails(getDoc(eventDoc(f)));
+    await assertFails(getDoc(doc(f, 'users', 'admin')));
+    await assertFails(setDoc(doc(f, 'events', EVENT_ID, 'scans', 'autre'), data));
+    await assertFails(setDoc(totals(f), { ...data, student: -1 }));
   });
 });
 
