@@ -40,6 +40,7 @@ export type AppState = EngineOutput & {
   clock: string;
   scanned: { student: number; regular: number };
   revenue: number;
+  staff: number;
   scanAgeS: number;
   salesOpen: boolean;
   forceSales: boolean;

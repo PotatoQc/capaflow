@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import Nav from './Nav';
+import Vitrine from './Vitrine';
 import { useApp } from '../data/AppContext';
 import { TICKETS } from '../data/event';
 
@@ -23,8 +23,8 @@ function Tile({ label, value, suffix, ratio, tone }: TileProps) {
 
 export default function Tableau() {
   const { role, state: s } = useApp();
-  const [tv, setTv] = useState(false);
   if (role === 'bouncer') return <Navigate to="/porte" replace />;
+  if (role === 'viewer') return <Vitrine />;
 
   const l = s.light;
   const age = s.scanAgeS;
@@ -38,38 +38,6 @@ export default function Tableau() {
       {over === 0 ? 'SALLE PLEINE' : `DÉPASSEMENT : +${over} au-dessus de la capacité (${s.capacity})`}
     </div>
   );
-  const ticketTiles = (
-    <>
-      <Tile label="Billets étudiants" value={s.scanned.student} suffix={`/ ${TICKETS.student}`} ratio={s.scanned.student / TICKETS.student} />
-      <Tile label="Billets réguliers" value={s.scanned.regular} suffix={`/ ${TICKETS.regular}`} ratio={s.scanned.regular / TICKETS.regular} />
-    </>
-  );
-
-  if (role === 'viewer') {
-    const enterTv = () => {
-      setTv(true);
-      void document.documentElement.requestFullscreen?.().catch(() => undefined);
-    };
-    const exitTv = () => {
-      setTv(false);
-      if (document.fullscreenElement) void document.exitFullscreen();
-    };
-    return (
-      <div className={`page ${tv ? 'tv' : ''}`}>
-        {!tv && <Nav />}
-        <div className="banners">{capacityBanner}</div>
-        <section className={`hero ${over >= 0 ? 'hero-red' : 'hero-room'}`}>
-          <div className="hero-top">PERSONNES DANS LA SALLE</div>
-          <div className="hero-num">{s.occupancy}</div>
-          <p className="suggested">sur une capacité de {s.capacity}</p>
-        </section>
-        <section className="tiles">{ticketTiles}</section>
-        <button className="btn btn-sm tv-toggle" onClick={tv ? exitTv : enterTv}>
-          {tv ? 'Quitter le grand écran' : 'Grand écran'}
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="page">
@@ -108,7 +76,9 @@ export default function Tableau() {
 
       <section className="tiles">
         <Tile label="Salle" value={s.occupancy} suffix={`/ ${s.capacity}`} ratio={s.occupancy / s.capacity} tone={over >= 0 ? 'red' : undefined} />
-        {ticketTiles}
+        <Tile label="Billets étudiants" value={s.scanned.student} suffix={`/ ${TICKETS.student}`} ratio={s.scanned.student / TICKETS.student} />
+        <Tile label="Billets réguliers" value={s.scanned.regular} suffix={`/ ${TICKETS.regular}`} ratio={s.scanned.regular / TICKETS.regular} />
+        <Tile label="Staff" value={s.staff} />
         <Tile label="Dehors" value={s.outside} />
         <Tile label="Réserve" value={Math.round(s.reserve)} />
         <Tile label="Attendus d'ici 1 h" value={`~${Math.round(s.expected1h)}`} />

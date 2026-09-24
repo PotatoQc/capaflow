@@ -9,7 +9,7 @@ export default defineConfig({
     // Cache hors ligne de la page (PLAN §3) : page web sans installation, donc aucun manifeste.
     VitePWA({
       registerType: 'autoUpdate', injectRegister: 'script', manifest: false,
-      workbox: { globPatterns: ['**/*.{js,css,html,woff2}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,woff2,png}'] },
     }),
   ],
 });

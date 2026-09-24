@@ -227,6 +227,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       clock: clock(now),
       scanned,
       revenue,
+      staff: totals.staff,
       scanAgeS: Number.isFinite(scansAgeMs) ? Math.max(0, Math.round(scansAgeMs / 1000)) : Infinity,
       salesOpen: eventData.salesOpen,
       forceSales: eventData.forceSales,

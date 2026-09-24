@@ -1,4 +1,4 @@
-# CapaFlow — règles du projet
+# SouthEvents Porte (ex-CapaFlow) — règles du projet
 
 @PLAN.md
 

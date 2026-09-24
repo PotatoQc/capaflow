@@ -1,4 +1,4 @@
-# PLAN — CapaFlow v1 (Neon Party)
+# PLAN — SouthEvents Porte v1 (Neon Party)
 
 > Version 1.0 · validée par l'utilisateur le 2026-09-22 · **source de vérité unique**.
 > Toute modification exige l'accord explicite de l'utilisateur et une ligne datée dans le §14.
@@ -91,7 +91,7 @@ capaflow/
 
 ## 6. Écrans (thème sombre à fort contraste, textes en français)
 
-Style « Signalétique · Nuit » : noir pur, formes droites (coins 4 px), aucune lueur ni dégradé. Couleurs : fond `#000000`, surfaces `#111111`, texte `#E8E8E8`, vert `#2F9E5F`, jaune `#D9A82B`, rouge `#C8423A`, accent blanc `#E8E8E8` (texte noir dessus). Polices Barlow Condensed (chiffres, boutons, titres) et Barlow (texte), intégrées à l'app (disponibles hors ligne). Porte : SORTIE en bloc rouge plein, RÉENTRÉE en bloc vert plein, VENTE en bloc gris foncé.
+Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexion, monogramme « SE » dans l'en-tête ; favicon = monogramme). Style « Signalétique · Nuit » : noir pur, formes droites (coins 4 px), aucune lueur ni dégradé. Couleurs : fond `#000000`, surfaces `#111111`, texte `#E8E8E8`, vert `#2F9E5F`, jaune `#D9A82B`, rouge `#C8423A`, accent blanc `#E8E8E8` (texte noir dessus). Polices Barlow Condensed (chiffres, boutons, titres) et Barlow (texte), intégrées à l'app (disponibles hors ligne). Porte : SORTIE en bloc rouge plein, RÉENTRÉE en bloc vert plein, VENTE en bloc gris foncé.
 
 ### 6.1 Porte (`#/porte`)
 
@@ -133,7 +133,8 @@ Style « Signalétique · Nuit » : noir pur, formes droites (coins 4 px), aucun
 - Tuiles : Salle O/C · Billets étudiants S/166 · Billets réguliers S/89 · Dehors · Réserve · Attendus d'ici 1 h · Revenus porte · Âge des scans.
 - Bandeaux : alerte de capacité (même règle qu'au §6.1, en premier), `SUSPENDU`, `FERMÉ`, `FORÇAGE ACTIF`, et « ⚠ Hi.Events indique X billets (config : Y) » si un total Hi.Events diffère de T.
 - Les valeurs affichées sont arrondies à l'unité ; V est calculé exactement (§9).
-- **Version Viewer** : chiffre héros = personnes dans la salle (sur la capacité), tuiles Billets étudiants et Billets réguliers, et alerte de capacité seulement. Aucun V, prix, réserve, revenu ni bandeau de ventes. Bouton « Grand écran » (plein écran quand le navigateur le permet, chiffres agrandis) pour un écran de la sécurité.
+- **Tuile Staff** : nombre de staff comptés (somme des +Staff), à côté des tuiles de billets, pour tous les rôles.
+- **Version Viewer (vitrine « néon festif », vue publique)** : seul écran à lueurs néon (rose, cyan, or). Titre « NEON PARTY » en enseigne néon qui s'allume puis grésille ; chiffre héros = personnes dans la salle, compteur qui roule, bulle « +N / −N » à chaque changement, jauge de la salle animée, cadre qui pulse au rythme ; tuiles Billets étudiants, Billets réguliers et Staff (compteurs animés) ; égaliseur décoratif ; alerte de capacité seulement. Animations coupées si l'appareil demande moins de mouvement. Aucun V, prix, réserve, revenu ni bandeau de ventes. Bouton « Grand écran » (plein écran quand le navigateur le permet, chiffres agrandis) pour un écran de la sécurité.
 
 ### 6.3 Gestion (`#/gestion`)
 
@@ -352,6 +353,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Nom SouthEvents Porte + logo ; tuile Staff (tous les rôles) ; vitrine Viewer « néon festif » animée |
 | 2026-09-24 | Refonte visuelle « Signalétique · Nuit » (choix C3) : fin du violet, des lueurs et des dégradés ; polices Barlow intégrées |
 | 2026-09-23 | Écran Porte : rappel de la carte étudiante avant le check-in étudiant ; sans carte, vendre au prix non-étudiant s'il reste de la place, sinon refuser |
 | 2026-09-23 | Écran Porte : dates d'âge affichées seules (sans « né(e) le … ou avant ») |

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Brand } from './Brand';
 
 export default function Connexion({ onSignIn }: { onSignIn: (username: string, password: string) => Promise<void> }) {
   const [username, setUsername] = useState('');
@@ -19,7 +20,7 @@ export default function Connexion({ onSignIn }: { onSignIn: (username: string, p
   return (
     <main className="login">
       <form className="login-card" onSubmit={submit}>
-        <div className="brand brand-lg">Capa<span>Flow</span></div>
+        <Brand large />
         <p className="muted">Neon Party · ven. 25 sept. · 19:00</p>
         <label className="field">
           <span>Identifiant</span>

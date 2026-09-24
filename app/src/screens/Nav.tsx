@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAlerts } from '../alerts/AlertProvider';
 import { useApp } from '../data/AppContext';
 import { ROLE_LABEL } from '../data/event';
+import { Brand } from './Brand';
 
 const LINKS = [
   { to: '/tableau', label: 'Tableau' },
@@ -16,7 +17,7 @@ export default function Nav() {
 
   return (
     <header className="nav">
-      <div className="brand">Capa<span>Flow</span></div>
+      <Brand />
       {canManage && (
         <nav>
           {LINKS.map((l) => (

@@ -60,7 +60,7 @@ export function MemoryProvider({ role = 'manager', children }: { role?: Role; ch
   const api: AppApi = {
     role,
     state: {
-      ...out, priceMode, checkinLinks, capacity, clock: clock(NOW), scanned: SCANNED, revenue, scanAgeS: 12,
+      ...out, priceMode, checkinLinks, capacity, clock: clock(NOW), scanned: SCANNED, revenue, staff: totals.staff, scanAgeS: 12,
       salesOpen, forceSales, online: true, pending: 0, doorStudent: applied.student, doorOther: applied.other, params, pricing,
     },
     log,
