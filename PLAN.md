@@ -91,7 +91,7 @@ capaflow/
 
 ## 6. Écrans (thème sombre à fort contraste, textes en français)
 
-Couleurs : fond `#0B0B0F`, surfaces `#17171F`, texte `#F5F5F7`, vert `#22C55E`, jaune `#FACC15`, rouge `#EF4444`, accent `#A855F7`.
+Style « Signalétique · Nuit » : noir pur, formes droites (coins 4 px), aucune lueur ni dégradé. Couleurs : fond `#000000`, surfaces `#111111`, texte `#E8E8E8`, vert `#2F9E5F`, jaune `#D9A82B`, rouge `#C8423A`, accent blanc `#E8E8E8` (texte noir dessus). Polices Barlow Condensed (chiffres, boutons, titres) et Barlow (texte), intégrées à l'app (disponibles hors ligne). Porte : SORTIE en bloc rouge plein, RÉENTRÉE en bloc vert plein, VENTE en bloc gris foncé.
 
 ### 6.1 Porte (`#/porte`)
 
@@ -118,7 +118,7 @@ Couleurs : fond `#0B0B0F`, surfaces `#17171F`, texte `#F5F5F7`, vert `#22C55E`, 
 - **Staff** : +1 pour l'arrivée d'un membre du staff. Ses sorties et réentrées passent par les boutons normaux.
 - **Vente** : feuille avec deux cartes, Étudiant et Autre, chacune avec son **prix appliqué** (automatique ou figé, §6.3, **figé à l'ouverture de la feuille**) et un compteur − / + (0 au départ). Total des billets ≤ min(10, V au moment de l'ouverture) ; « + » grisé au plafond. Bouton « Confirmer N billet(s) · X $ » (grisé si N = 0) → **une seule opération** `sale` pour tout le groupe, donc « Annuler dernier » annule le groupe entier.
 - **Billets disponibles** : sous les prix du bouton Vente, « V billet(s) disponible(s) », mis à jour en direct.
-- **Nouveau prix** : quand les prix appliqués changent, bandeau violet clignotant « NOUVEAU PRIX : X $ · Y $ » pendant 10 s (si les ventes sont ouvertes).
+- **Nouveau prix** : quand les prix appliqués changent, bandeau blanc clignotant « NOUVEAU PRIX : X $ · Y $ » pendant 10 s (si les ventes sont ouvertes).
 - État du bouton Vente, par ordre de priorité : `FERMÉ` (ventes fermées) › `SUSPENDU` (scans vieux de plus de 60 s, sans forçage) › `COMPLET` (V ≤ 0) › ouvert.
 - Âge des scans : ≤ 30 s, rien ; de 30 à 60 s, « ⚠ scans il y a X s » en jaune ; au-delà de 60 s, `SUSPENDU`.
 - **Annuler dernier** : actif pendant 30 s après son dernier clic, avec compte à rebours.
@@ -352,6 +352,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Refonte visuelle « Signalétique · Nuit » (choix C3) : fin du violet, des lueurs et des dégradés ; polices Barlow intégrées |
 | 2026-09-23 | Écran Porte : rappel de la carte étudiante avant le check-in étudiant ; sans carte, vendre au prix non-étudiant s'il reste de la place, sinon refuser |
 | 2026-09-23 | Écran Porte : dates d'âge affichées seules (sans « né(e) le … ou avant ») |
 | 2026-09-23 | **Webhooks Hi.Events** (retirés du hors-périmètre à la demande de l'utilisateur) : scans comptés en ~1 s via Worker → Firestore `scans/totals`, compte technique `worker` aux droits minimaux ; appel toutes les 15 s conservé en secours |
