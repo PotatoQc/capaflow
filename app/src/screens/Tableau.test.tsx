@@ -28,7 +28,7 @@ describe('Tableau', () => {
 
   it('Viewer : vitrine Neon Party avec staff, sans prix ni places vendables', () => {
     const { container } = renderAs('viewer');
-    expect(screen.getByRole('heading', { name: 'Neon Party' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Neon\s*Party/ })).toBeTruthy();
     expect(screen.getByText('Staff')).toBeTruthy();
     expect(container.textContent).not.toMatch(/\$|VOUS POUVEZ VENDRE/);
   });

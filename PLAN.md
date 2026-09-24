@@ -134,7 +134,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - Bandeaux : alerte de capacité (même règle qu'au §6.1, en premier), `SUSPENDU`, `FERMÉ`, `FORÇAGE ACTIF`, et « ⚠ Hi.Events indique X billets (config : Y) » si un total Hi.Events diffère de T.
 - Les valeurs affichées sont arrondies à l'unité ; V est calculé exactement (§9).
 - **Tuile Staff** : nombre de staff comptés (somme des +Staff), à côté des tuiles de billets, pour tous les rôles.
-- **Version Viewer (vitrine « néon festif », vue publique)** : seul écran à lueurs néon (rose, cyan, or). Titre « NEON PARTY » en enseigne néon qui s'allume puis grésille ; chiffre héros = personnes dans la salle, compteur qui roule, bulle « +N / −N » à chaque changement, jauge de la salle animée, cadre qui pulse au rythme ; tuiles Billets étudiants, Billets réguliers et Staff (compteurs animés) ; alerte de capacité seulement. Animations coupées si l'appareil demande moins de mouvement. Aucun V, prix, réserve, revenu ni bandeau de ventes. Bouton « Grand écran » (plein écran quand le navigateur le permet, chiffres agrandis) pour un écran de la sécurité.
+- **Version Viewer (vitrine « Enseigne », vue publique)** : un seul néon, le titre « NEON PARTY » en tube rose (contour lumineux) qui s'allume puis grésille ; logo SE + « SouthEvents présente » ; chiffre héros = personnes dans la salle (compteur qui roule), avec le % de la capacité ; lignes simples Billets étudiants, Billets réguliers et Staff (compteurs qui roulent) ; alerte de capacité seulement. Aucun V, prix, réserve, revenu ni bandeau de ventes. Bouton « Grand écran ». Animations coupées si l'appareil demande moins de mouvement.
 
 ### 6.3 Gestion (`#/gestion`)
 
@@ -354,6 +354,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Vitrine Viewer : modèle « Enseigne » (V2) retenu, remplace le néon festif |
 | 2026-09-24 | « − Staff » (opération `staffOut`, staff −1, règles mises à jour) ; égaliseur retiré de la vitrine Viewer |
 | 2026-09-24 | Nom SouthEvents Porte + logo ; tuile Staff (tous les rôles) ; vitrine Viewer « néon festif » animée |
 | 2026-09-24 | Refonte visuelle « Signalétique · Nuit » (choix C3) : fin du violet, des lueurs et des dégradés ; polices Barlow intégrées |

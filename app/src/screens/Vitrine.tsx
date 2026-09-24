@@ -4,7 +4,7 @@ import { useApp } from '../data/AppContext';
 import { TICKETS } from '../data/event';
 import mark from '../assets/southevents-mark.png';
 
-// Vue Viewer « néon festif » (PLAN §6.2) : vue publique animée, sans V, prix ni revenus.
+// Vue Viewer « Enseigne » (PLAN §6.2) : vue publique, sans V, prix ni revenus.
 
 const COUNT_MS = 800;
 
@@ -37,18 +37,15 @@ function useCount(target: number) {
   return shown;
 }
 
-type Pop = { id: number; text: string; up: boolean };
-
-function Counter({ label, value, total, tone }: { label: string; value: number; total?: number; tone: string }) {
+function Row({ label, value, total }: { label: string; value: number; total?: number }) {
   const n = useCount(value);
   return (
-    <div className={`show-tile ${tone}`}>
+    <div className="show-row">
       <span>{label}</span>
       <strong>
         {n}
         {total !== undefined && <small> / {total}</small>}
       </strong>
-      {total !== undefined && <div className="gauge thin"><i style={{ width: `${Math.min(100, (value / total) * 100)}%` }} /></div>}
     </div>
   );
 }
@@ -56,19 +53,9 @@ function Counter({ label, value, total, tone }: { label: string; value: number; 
 export default function Vitrine() {
   const { state: s } = useApp();
   const [tv, setTv] = useState(false);
-  const [pops, setPops] = useState<Pop[]>([]);
-  const prev = useRef(s.occupancy);
   const shown = useCount(s.occupancy);
   const over = s.occupancy - s.capacity;
   const pct = Math.round((s.occupancy / s.capacity) * 100);
-
-  // Bulle « +1 » / « −1 » à chaque changement de l'occupation.
-  useEffect(() => {
-    const d = s.occupancy - prev.current;
-    prev.current = s.occupancy;
-    if (d === 0) return;
-    setPops((p) => [...p.slice(-4), { id: Date.now() + Math.random(), text: d > 0 ? `+${d}` : `−${-d}`, up: d > 0 }]);
-  }, [s.occupancy]);
 
   const enterTv = () => {
     setTv(true);
@@ -82,31 +69,20 @@ export default function Vitrine() {
   return (
     <div className={`show ${tv ? 'tv' : ''}`}>
       {!tv && <Nav />}
-      <header className="show-head">
+      <div className="show-top">
         <img src={mark} alt="SouthEvents" />
-        <h1 className="neon-title">Neon Party</h1>
-      </header>
+        <small>SouthEvents présente</small>
+      </div>
+      <h1 className="neon-title">Neon<br />Party</h1>
 
+      <div className="show-num">{shown}</div>
+      <p className="show-sub">personnes dans la salle · {pct} % de la capacité ({s.capacity})</p>
       {over >= 0 && <p className="show-full">{over === 0 ? 'SALLE PLEINE' : `DÉPASSEMENT : +${over}`}</p>}
 
-      <section className={`show-hero ${over >= 0 ? 'full' : ''}`}>
-        <span className="show-label">Dans la salle en ce moment</span>
-        <div className="show-num">
-          {shown}
-          {pops.map((p) => (
-            <span key={p.id} className={`pop ${p.up ? '' : 'down'}`} onAnimationEnd={() => setPops((l) => l.filter((x) => x.id !== p.id))}>
-              {p.text}
-            </span>
-          ))}
-        </div>
-        <div className="gauge"><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
-        <span className="show-cap">{pct} % de la capacité ({s.capacity})</span>
-      </section>
-
-      <section className="show-tiles">
-        <Counter label="Billets étudiants" value={s.scanned.student} total={TICKETS.student} tone="cyan" />
-        <Counter label="Billets réguliers" value={s.scanned.regular} total={TICKETS.regular} tone="pink" />
-        <Counter label="Staff" value={s.staff} tone="gold" />
+      <section className="show-rows">
+        <Row label="Billets étudiants" value={s.scanned.student} total={TICKETS.student} />
+        <Row label="Billets réguliers" value={s.scanned.regular} total={TICKETS.regular} />
+        <Row label="Staff" value={s.staff} />
       </section>
 
       <button className="btn btn-sm tv-toggle" onClick={tv ? exitTv : enterTv}>
