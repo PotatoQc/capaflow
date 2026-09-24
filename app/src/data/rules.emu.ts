@@ -3,7 +3,7 @@ import {
   assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
-  Timestamp, disableNetwork, doc, enableNetwork, getDoc, serverTimestamp, setDoc, updateDoc, writeBatch, type Firestore,
+  Timestamp, deleteDoc, disableNetwork, doc, enableNetwork, getDoc, serverTimestamp, setDoc, updateDoc, writeBatch, type Firestore,
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -43,7 +43,7 @@ beforeEach(async () => {
       await setDoc(shardDoc(f, uid), ZERO_SHARD);
       await setDoc(moneyDoc(f, uid), { revenue: 0, lastOp: '' });
     }
-    await setDoc(eventDoc(f), { capacity: 255, salesOpen: true, forceSales: false });
+    await setDoc(eventDoc(f), { capacity: 255, salesOpen: true, forceSales: false, doorsOpen: Timestamp.fromMillis(Date.now() + 3_600_000) });
     await setDoc(configDoc(f), CONFIG);
   });
 });
@@ -56,6 +56,38 @@ const read = async (path: string[]) => {
   return data!;
 };
 const shard = (uid: string) => read(['events', EVENT_ID, 'shards', uid]);
+
+describe('Remise à zéro de test', () => {
+  const seedOps = async () => {
+    await buildOp(db('b1'), 'b1', { type: 'staff' }, 'op-a').batch.commit();
+    await buildOp(db('b1'), 'b1', SALE, 'op-b').batch.commit();
+  };
+
+  it('l’Admin remet compteurs et revenus à 0 et efface le journal avant l’ouverture', async () => {
+    await seedOps();
+    const f = db('admin');
+    const batch = writeBatch(f);
+    batch.set(shardDoc(f, 'b1'), ZERO_SHARD);
+    batch.set(moneyDoc(f, 'b1'), { revenue: 0, lastOp: '' });
+    batch.delete(logDoc(f, 'op-a'));
+    batch.delete(logDoc(f, 'op-b'));
+    await assertSucceeds(batch.commit());
+    expect((await shard('b1')).staff).toBe(0);
+  });
+
+  it('refusé : Manager ou Bouncer, valeur non nulle, ou portes ouvertes', async () => {
+    await seedOps();
+    await assertFails(setDoc(shardDoc(db('manager'), 'b1'), ZERO_SHARD));
+    await assertFails(deleteDoc(logDoc(db('b1'), 'op-a')));
+    await assertFails(setDoc(shardDoc(db('admin'), 'b1'), { ...ZERO_SHARD, staff: 5 }));
+    await assertFails(setDoc(moneyDoc(db('admin'), 'b1'), { revenue: 10, lastOp: '' }));
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(eventDoc(ctx.firestore() as unknown as Firestore), { doorsOpen: Timestamp.fromMillis(Date.now() - 60_000) });
+    });
+    await assertFails(setDoc(shardDoc(db('admin'), 'b1'), ZERO_SHARD));
+    await assertFails(deleteDoc(logDoc(db('admin'), 'op-a')));
+  });
+});
 
 describe('A1.1 — règles de sécurité', () => {
   it('un Viewer ne peut rien écrire, ni lire la config privée ou les revenus', async () => {

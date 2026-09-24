@@ -70,6 +70,7 @@ export type AppApi = {
   setPricing: (p: Pricing) => void;
   createAccount: (a: { username: string; name: string; role: Role; password: string }) => Promise<void>;
   setAccountRole: (uid: string, role: AccountRole) => void;
+  resetCounts: () => Promise<void>;
   signOut: () => void;
 };
 

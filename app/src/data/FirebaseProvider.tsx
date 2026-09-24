@@ -4,7 +4,8 @@ import {
   signOut as fbSignOut, type User,
 } from 'firebase/auth';
 import {
-  Timestamp, collection, doc, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc,
+  Timestamp, collection, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch,
+  type WriteBatch,
 } from 'firebase/firestore';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { computeState, type Params, type Pricing, type Totals } from '../engine/computeState';
@@ -20,7 +21,7 @@ import {
   type AccountRole, type Role,
 } from './event';
 import { auth, db, firebaseConfig, loginEmail } from './firebase';
-import { EVENT_ID, buildOp, configDoc, ensureCounters, eventDoc, type Op } from './ops';
+import { EVENT_ID, ZERO_SHARD, buildOp, configDoc, ensureCounters, eventDoc, type Op } from './ops';
 
 type EventDoc = {
   doorsOpen: Timestamp;
@@ -278,6 +279,22 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       await setDoc(doc(db, 'users', cred.user.uid), { username, name, role: newRole, createdAt: serverTimestamp() });
     },
     setAccountRole: (accountUid, r) => commit(updateDoc(doc(db, 'users', accountUid), { role: r })),
+    // Remise à zéro de test (PLAN §6.3) : compteurs, revenus et journal ; la configuration reste.
+    resetCounts: async () => {
+      const col = (name: string) => getDocs(collection(db, 'events', EVENT_ID, name));
+      const [shardSnap, moneySnap, logSnap] = await Promise.all([col('shards'), col('money'), col('log')]);
+      const writes: ((b: WriteBatch) => void)[] = [
+        ...shardSnap.docs.map((d) => (b: WriteBatch) => b.set(d.ref, ZERO_SHARD)),
+        ...moneySnap.docs.map((d) => (b: WriteBatch) => b.set(d.ref, { revenue: 0, lastOp: '' })),
+        ...logSnap.docs.map((d) => (b: WriteBatch) => b.delete(d.ref)),
+      ];
+      for (let i = 0; i < writes.length; i += 400) {
+        const batch = writeBatch(db);
+        writes.slice(i, i + 400).forEach((w) => w(batch));
+        await batch.commit();
+      }
+      ownOps.current.clear();
+    },
     signOut: () => fbSignOut(auth),
   };
 

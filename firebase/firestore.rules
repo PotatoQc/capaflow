@@ -95,6 +95,17 @@ service cloud.firestore {
       function sign(L) { return L.type == 'void' ? -1 : 1; }
       function lastOpAfter(e) { return getAfter(logPath(e, request.resource.data.lastOp)).data; }
 
+      // ---------- Remise à zéro de test (Admin, avant l'ouverture des portes seulement) ----------
+      function beforeDoors(e) {
+        return request.time < get(/databases/$(db)/documents/events/$(e)).data.doorsOpen;
+      }
+      function resetOk(e) { return isAdmin() && beforeDoors(e); }
+      function zeroShard(d) {
+        return d.keys().hasOnly(['staff', 'saleStudent', 'saleOther', 'exit', 'reentry', 'adjust', 'exitW', 'lastOp'])
+          && d.staff == 0 && d.saleStudent == 0 && d.saleOther == 0 && d.exit == 0
+          && d.reentry == 0 && d.adjust == 0 && d.exitW == 0 && d.lastOp == '';
+      }
+
       // ---------- Compteurs par utilisateur ----------
       function shardApplied(o, n, d, s) {
         return n.staff == o.staff + s * d.staff
@@ -113,13 +124,14 @@ service cloud.firestore {
           && request.resource.data.saleOther == 0 && request.resource.data.exit == 0
           && request.resource.data.reentry == 0 && request.resource.data.adjust == 0
           && request.resource.data.exitW == 0 && request.resource.data.lastOp == '';
-        allow update: if isDoor() && request.auth.uid == uid
+        allow update: if (isDoor() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['staff', 'saleStudent', 'saleOther', 'exit', 'reentry', 'adjust', 'exitW', 'lastOp'])
           && request.resource.data.lastOp is string
           && !exists(logPath(e, request.resource.data.lastOp))
           && existsAfter(logPath(e, request.resource.data.lastOp))
           && lastOpAfter(e).uid == request.auth.uid
-          && shardApplied(resource.data, request.resource.data, effectOf(baseOp(e, lastOpAfter(e))), sign(lastOpAfter(e)));
+          && shardApplied(resource.data, request.resource.data, effectOf(baseOp(e, lastOpAfter(e))), sign(lastOpAfter(e))))
+          || (resetOk(e) && zeroShard(request.resource.data));
         allow delete: if false;
       }
 
@@ -129,13 +141,15 @@ service cloud.firestore {
         allow create: if isDoor() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['revenue', 'lastOp'])
           && request.resource.data.revenue == 0 && request.resource.data.lastOp == '';
-        allow update: if isDoor() && request.auth.uid == uid
+        allow update: if (isDoor() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['revenue', 'lastOp'])
           && request.resource.data.lastOp is string
           && !exists(logPath(e, request.resource.data.lastOp))
           && existsAfter(logPath(e, request.resource.data.lastOp))
           && baseOp(e, lastOpAfter(e)).type == 'sale'
-          && request.resource.data.revenue == resource.data.revenue + sign(lastOpAfter(e)) * amount(baseOp(e, lastOpAfter(e)));
+          && request.resource.data.revenue == resource.data.revenue + sign(lastOpAfter(e)) * amount(baseOp(e, lastOpAfter(e))))
+          || (resetOk(e) && request.resource.data.keys().hasOnly(['revenue', 'lastOp'])
+                && request.resource.data.revenue == 0 && request.resource.data.lastOp == '');
         allow delete: if false;
       }
 
@@ -175,7 +189,8 @@ service cloud.firestore {
           && head(request.resource.data)
           && getAfter(shardPath(e, request.auth.uid)).data.lastOp == opId
           && typeOk(e, opId, request.resource.data);
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if resetOk(e);
       }
     }
   }

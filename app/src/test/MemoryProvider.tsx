@@ -99,6 +99,11 @@ export function MemoryProvider({ role = 'manager', children }: { role?: Role; ch
       setAccounts((a) => [...a, { uid: `u${a.length + 1}`, username, name, role: r }]);
     },
     setAccountRole: (uid, r: AccountRole) => setAccounts((a) => a.map((x) => (x.uid === uid ? { ...x, role: r } : x))),
+    resetCounts: async () => {
+      setDelta({ ...NONE, ...Object.fromEntries(Object.entries(BASE).map(([k, v]) => [k, -v])), revenue: -175 });
+      setLog([]);
+      setEffects({});
+    },
     signOut: () => undefined,
   };
 

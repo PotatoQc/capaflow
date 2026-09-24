@@ -149,6 +149,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - Chaque section de Gestion commence par une courte description d'aide pour la soirée.
 - Journal : 50 dernières entrées en direct, bouton Annuler (Manager, Admin).
 - Comptes (Admin) : créer (identifiant, nom, rôle, mot de passe), changer le rôle, désactiver.
+- **Remise à zéro (tests)** (Admin) : après confirmation, efface le journal et remet à 0 tous les compteurs (`shards`) et revenus (`money`). Capacité, prix, paramètres, liens et comptes sont conservés ; les scans Hi.Events ne sont pas touchés (annuler les check-ins de test dans Hi.Events). Bouton désactivé dès l'ouverture des portes, et refusé par les règles après `doorsOpen`.
 - « Initialiser l'événement » (Admin, visible seulement si `/events/neon-party` n'existe pas) : écrit les valeurs par défaut du §7.
 
 ## 7. Données Firestore
@@ -219,9 +220,9 @@ Courbe d'arrivée par défaut (F = part cumulée des arrivées des détenteurs d
 - `events/neon-party` : lecture par tout compte actif ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `capacity` (entier de 1 à 300), `salesOpen` et `forceSales` ; suppression interdite.
 - `private/config` : lecture par Admin, Manager et Bouncer (**pas le Viewer**) ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `priceMode`, `doorPrices` (deux entiers de 1 à 100), `params` et `pricing` ; `checkinLinks` modifiable par l'Admin seulement, chaque valeur vide ou conforme à `^https://app\.hi\.events/check-in/cil_[A-Za-z0-9]+(#scan)?$`.
 - `scans/totals` : lecture par tout compte actif ; écriture seulement par le compte technique de rôle `worker` (champs `student`, `regular` entiers ≥ 0 et `at == request.time`). Ce rôle ne peut rien lire ni écrire d'autre.
-- `money/{uid}` : lecture par Manager et Admin seulement. Création par le propriétaire à 0. Mise à jour par le propriétaire, dans le même lot qu'un `log` de vente ou d'annulation de vente (`getAfter`), avec une variation égale au montant du log (Σ qty × prices).
-- `shards/{uid}` : lecture par tout compte actif. Création par le propriétaire (Admin, Manager ou Bouncer) avec tous les compteurs à 0. Mise à jour par le propriétaire seulement, et seulement si `log/{lastOp}` n'existait pas avant le lot et existe après (`getAfter`), avec des variations qui correspondent exactement au type (tableau du §7). Suppression interdite.
-- `log/{opId}` : lecture par Manager et Admin. **Création seulement**, jamais de modification ni de suppression, avec `uid == auth.uid`, `at == request.time`, un type permis par le rôle et `getAfter(shard).lastOp == opId`.
+- `money/{uid}` : lecture par Manager et Admin seulement. Création par le propriétaire à 0. Mise à jour par le propriétaire, dans le même lot qu'un `log` de vente ou d'annulation de vente (`getAfter`), avec une variation égale au montant du log (Σ qty × prices). Exception : l'Admin peut le remettre à `{revenue: 0, lastOp: ''}` avant `doorsOpen` (remise à zéro de test).
+- `shards/{uid}` : lecture par tout compte actif. Création par le propriétaire (Admin, Manager ou Bouncer) avec tous les compteurs à 0. Mise à jour par le propriétaire seulement, et seulement si `log/{lastOp}` n'existait pas avant le lot et existe après (`getAfter`), avec des variations qui correspondent exactement au type (tableau du §7). Exception : l'Admin peut le remettre entièrement à 0 avant `doorsOpen` (remise à zéro de test). Suppression interdite.
+- `log/{opId}` : lecture par Manager et Admin. **Création seulement**, jamais de modification ; suppression par l'Admin seulement avant `doorsOpen` (remise à zéro de test) ; avec `uid == auth.uid`, `at == request.time`, un type permis par le rôle et `getAfter(shard).lastOp == opId`.
 - Validation : `prices` entiers de 1 à 100 · `qty` entiers ≥ 0 avec 1 ≤ qty.student + qty.other ≤ 10 · `w` > 0 et ≤ 2^25 · `delta` entier non nul de −50 à 50, avec `reason` de 1 à 200 caractères.
 - Annulation : `opId == "void_" + ref`, et l'original existe et n'est pas lui-même une annulation. Pour un Bouncer, l'original doit être à lui, ne pas être un `adjust`, et `request.time < original.at + 30 s`.
 - Les règles **n'imposent pas** V ni `salesOpen` : une vente encaissée hors ligne doit toujours pouvoir être enregistrée.
@@ -354,6 +355,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Bouton Admin « Remise à zéro (tests) » : journal, compteurs et revenus ; bloqué par les règles dès l'ouverture des portes |
 | 2026-09-24 | Vitrine Viewer : modèle « Enseigne » (V2) retenu, remplace le néon festif |
 | 2026-09-24 | « − Staff » (opération `staffOut`, staff −1, règles mises à jour) ; égaliseur retiré de la vitrine Viewer |
 | 2026-09-24 | Nom SouthEvents Porte + logo ; tuile Staff (tous les rôles) ; vitrine Viewer « néon festif » animée |

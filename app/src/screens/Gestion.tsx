@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import Nav from './Nav';
 import { TYPE_LABEL, useApp, type Account } from '../data/AppContext';
 import { arrivalFraction } from '../engine/computeState';
-import { CURVE_HOURS, DEFAULT_CAPACITY, ROLE_LABEL, clock, localTimeToUtc, type AccountRole, type Role } from '../data/event';
+import { CURVE_HOURS, DEFAULT_CAPACITY, DOORS_OPEN, ROLE_LABEL, clock, localTimeToUtc, type AccountRole, type Role } from '../data/event';
 import ConfirmDialog from './ConfirmDialog';
 
 type Confirm = { title: string; message: string; label: string; onConfirm: () => void; onCancel?: () => void };
@@ -24,7 +24,7 @@ const stepDelta = (d: number, by: number) => {
 export default function Gestion() {
   const {
     role, state, log, setCapacity, setSalesOpen, setForceSales, lockDoorPrices, setPriceMode, setCheckinLinks, setParams,
-    setPricing, record, voidEntry, accounts, createAccount: addAccount, setAccountRole,
+    setPricing, record, voidEntry, accounts, createAccount: addAccount, setAccountRole, resetCounts,
   } = useApp();
   const [linksDraft, setLinksDraft] = useState(state.checkinLinks);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -42,6 +42,7 @@ export default function Gestion() {
   const [draft, setDraft] = useState({ username: '', name: '', role: 'bouncer' as Role, password: '' });
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
+  const [resetError, setResetError] = useState('');
 
   if (role === 'bouncer') return <Navigate to="/porte" replace />;
   if (role === 'viewer') return <Navigate to="/tableau" replace />;
@@ -177,6 +178,21 @@ export default function Gestion() {
     setCheckinLinks({ student: linksDraft.student.trim(), regular: linksDraft.regular.trim() });
     save('links');
   };
+
+  const doorsOpened = Date.now() >= DOORS_OPEN;
+  const askReset = () =>
+    setConfirm({
+      title: 'Tout remettre à zéro ?',
+      message:
+        "Efface le journal et remet à 0 le staff, les ventes, les sorties, les réentrées, les ajustements et les revenus. " +
+        'Capacité, prix, paramètres, liens et comptes sont conservés. Les scans Hi.Events ne sont pas touchés : ' +
+        'annulez les check-ins de test dans Hi.Events.',
+      label: 'Tout remettre à zéro',
+      onConfirm: () => {
+        setResetError('');
+        resetCounts().then(() => save('reset'), () => setResetError('Échec de la remise à zéro. Réessayez.'));
+      },
+    });
 
   const adminCount = accounts.filter((a) => a.role === 'admin').length;
   const isLastAdmin = (a: Account) => a.role === 'admin' && adminCount === 1;
@@ -446,6 +462,22 @@ export default function Gestion() {
             <div className="card-actions">
               <button className="btn btn-primary" disabled={!!linksError} onClick={saveLinks}>Enregistrer les liens</button>
               {saved === 'links' && <span className="saved">✓ Liens enregistrés</span>}
+            </div>
+          </section>
+        )}
+
+        {role === 'admin' && (
+          <section className="card wide">
+            <h2>Remise à zéro (tests)</h2>
+            <p className="desc">
+              Pour repartir à neuf après des essais : journal effacé, compteurs et revenus à 0. La configuration est
+              conservée. Bloquée dès l'ouverture des portes (ven. 19:00) pour protéger les données de la soirée.
+            </p>
+            {resetError && <p className="error">{resetError}</p>}
+            <div className="card-actions">
+              <button className="btn" disabled={doorsOpened} onClick={askReset}>Tout remettre à zéro</button>
+              {doorsOpened && <span className="hint">Portes ouvertes : remise à zéro désactivée.</span>}
+              {saved === 'reset' && <span className="saved">✓ Remis à zéro</span>}
             </div>
           </section>
         )}
