@@ -168,7 +168,11 @@ export default function Porte() {
       </nav>
 
       <footer className="porte-foot">
-        <button className="btn" onClick={() => act('staff', 'plus')}>+ Staff</button>
+        <div className="staff-step">
+          <button className="btn" aria-label="Retirer un staff" disabled={state.staff <= 0} onClick={() => act('staffOut', 'minus')}>−</button>
+          <span>Staff <strong>{state.staff}</strong></span>
+          <button className="btn" aria-label="Ajouter un staff" onClick={() => act('staff', 'plus')}>+</button>
+        </div>
         <button className="btn" disabled={undoLeft === 0} onClick={undo}>
           Annuler dernier{undoLeft > 0 && ` (${undoLeft} s)`}
         </button>

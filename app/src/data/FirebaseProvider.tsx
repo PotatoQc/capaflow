@@ -246,7 +246,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         type === 'exit' ? { type: 'exit', w: exitWeight(Date.now()) }
         : type === 'sale' && s ? { type: 'sale', qty: { student: s.student, other: s.other }, prices: { student: s.priceStudent, other: s.priceOther } }
         : type === 'adjust' ? { type: 'adjust', delta: opts.delta ?? 0, reason: opts.reason ?? '' }
-        : { type: type as 'staff' | 'reentry' };
+        : { type: type as 'staff' | 'staffOut' | 'reentry' };
       const { batch, id } = buildOp(db, user.uid, op);
       ownOps.current.set(id, op);
       commit(batch.commit());

@@ -7,7 +7,6 @@ import mark from '../assets/southevents-mark.png';
 // Vue Viewer « néon festif » (PLAN §6.2) : vue publique animée, sans V, prix ni revenus.
 
 const COUNT_MS = 800;
-const EQ_BARS = 28;
 
 const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -109,12 +108,6 @@ export default function Vitrine() {
         <Counter label="Billets réguliers" value={s.scanned.regular} total={TICKETS.regular} tone="pink" />
         <Counter label="Staff" value={s.staff} tone="gold" />
       </section>
-
-      <div className="eq" aria-hidden="true">
-        {Array.from({ length: EQ_BARS }, (_, i) => (
-          <i key={i} style={{ animationDelay: `${-((i * 0.37) % 1)}s`, animationDuration: `${0.5 + ((i * 7) % 5) / 10}s` }} />
-        ))}
-      </div>
 
       <button className="btn btn-sm tv-toggle" onClick={tv ? exitTv : enterTv}>
         {tv ? 'Quitter le grand écran' : 'Grand écran'}

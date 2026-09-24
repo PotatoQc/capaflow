@@ -22,6 +22,7 @@ const combine = (a: Effect, b: Effect, sign: 1 | -1) =>
 function effectOf(type: OpType, delta: number, sale?: Sale): Effect {
   switch (type) {
     case 'staff': return { ...NONE, staff: 1 };
+    case 'staffOut': return { ...NONE, staff: -1 };
     case 'sale': return sale ? { ...NONE, saleStudent: sale.student, saleOther: sale.other, revenue: saleTotal(sale) } : NONE;
     case 'exit': return { ...NONE, exit: 1, exitW: exitWeight(NOW) };
     case 'reentry': return { ...NONE, reentry: 1 };

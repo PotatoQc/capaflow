@@ -4,13 +4,14 @@ import type { AccountRole, Role } from './event';
 
 // Interface commune aux écrans : fournie par FirebaseProvider (production) ou MemoryProvider (tests).
 
-export type OpType = 'staff' | 'sale' | 'exit' | 'reentry' | 'adjust' | 'void';
+export type OpType = 'staff' | 'staffOut' | 'sale' | 'exit' | 'reentry' | 'adjust' | 'void';
 export type Sale = { student: number; other: number; priceStudent: number; priceOther: number };
 export type PriceMode = 'auto' | 'locked';
 export type CheckinLinks = { student: string; regular: string };
 
 export const TYPE_LABEL: Record<OpType, string> = {
   staff: 'Staff',
+  staffOut: 'Staff parti',
   sale: 'Vente',
   exit: 'Sortie',
   reentry: 'Réentrée',

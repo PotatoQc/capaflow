@@ -80,7 +80,7 @@ service cloud.firestore {
       // ---------- Effet d'une opération sur un compteur (tableau du §7) ----------
       function effectOf(L) {
         return {
-          'staff': L.type == 'staff' ? 1 : 0,
+          'staff': L.type == 'staff' ? 1 : (L.type == 'staffOut' ? -1 : 0),
           'saleStudent': L.type == 'sale' ? L.qty.student : 0,
           'saleOther': L.type == 'sale' ? L.qty.other : 0,
           'exit': L.type == 'exit' ? 1 : 0,
@@ -160,7 +160,7 @@ service cloud.firestore {
                 || getAfter(moneyPath(e, request.auth.uid)).data.lastOp == opId);
       }
       function typeOk(e, opId, L) {
-        return ((L.type == 'staff' || L.type == 'reentry') && L.keys().hasOnly(['type', 'uid', 'at', 'clientAt']))
+        return ((L.type == 'staff' || L.type == 'staffOut' || L.type == 'reentry') && L.keys().hasOnly(['type', 'uid', 'at', 'clientAt']))
           || (L.type == 'exit' && L.keys().hasOnly(['type', 'uid', 'at', 'clientAt', 'w'])
                 && L.w is number && L.w > 0 && L.w <= 33554432)
           || (L.type == 'sale' && saleOk(L) && getAfter(moneyPath(e, request.auth.uid)).data.lastOp == opId)

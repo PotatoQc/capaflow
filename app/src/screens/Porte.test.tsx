@@ -71,6 +71,16 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
     expect(screen.getByText('195')).toBeTruthy();
   });
 
+  it('staff : + puis − ramène le compteur et l’occupation', () => {
+    renderPorte();
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter un staff' }));
+    expect(screen.getByText('196')).toBeTruthy();
+    expect(screen.getByText('21')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer un staff' }));
+    expect(screen.getByText('195')).toBeTruthy();
+    expect(screen.getByText('20')).toBeTruthy();
+  });
+
   it('dates limites d’âge au 25 septembre', () => {
     renderPorte();
     expect(screen.getByText('25/09/2008')).toBeTruthy();

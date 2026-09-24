@@ -9,6 +9,7 @@ export type Qty = { student: number; other: number };
 // Opérations du PLAN §7, telles qu'enregistrées dans le journal (sans uid ni heures).
 export type Op =
   | { type: 'staff' }
+  | { type: 'staffOut' }
   | { type: 'reentry' }
   | { type: 'exit'; w: number }
   | { type: 'sale'; qty: Qty; prices: Qty }
@@ -36,6 +37,7 @@ export async function ensureCounters(db: Firestore, uid: string) {
 function counterIncrements(op: Op, s: 1 | -1): Record<string, ReturnType<typeof increment>> {
   switch (op.type) {
     case 'staff': return { staff: increment(s) };
+    case 'staffOut': return { staff: increment(-s) };
     case 'reentry': return { reentry: increment(s) };
     case 'exit': return { exit: increment(s), exitW: increment(s * op.w) };
     case 'sale': return { saleStudent: increment(s * op.qty.student), saleOther: increment(s * op.qty.other) };

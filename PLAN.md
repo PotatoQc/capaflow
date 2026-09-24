@@ -113,9 +113,9 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - L'écran reste allumé (Wake Lock, redemandé au retour sur la page).
 - **Alerte de capacité** : si O ≥ C, un bandeau rouge clignotant s'affiche sous l'en-tête (« SALLE PLEINE » si O = C, « DÉPASSEMENT : +N » si O > C) et l'occupation passe en rouge. L'app ne bloque pas les entrées (les scans se font dans Hi.Events) ; la vente est déjà `COMPLET` car V ≤ 0.
 - **Âge** : ligne sous l'en-tête, calculée à partir du 25 sept. 2026 : « 18 ans + » suivi de « 25/09/2008 », « 17 ans + » suivi de « 25/09/2009 » : la date seule (format jj/mm/aaaa), sans « né(e) le » ni « ou avant ».
-- **Check-in** : boutons « Check-in étudiant ↗ » et « Check-in régulier ↗ » au-dessus de « + Staff », qui ouvrent les pages de check-in Hi.Events dans un nouvel onglet. Toujours affichés ; grisés avec « lien à configurer » tant que l'Admin n'a pas enregistré le lien (§6.3).
+- **Check-in** : boutons « Check-in étudiant ↗ » et « Check-in régulier ↗ » au-dessus du compteur Staff, qui ouvrent les pages de check-in Hi.Events dans un nouvel onglet. Toujours affichés ; grisés avec « lien à configurer » tant que l'Admin n'a pas enregistré le lien (§6.3).
 - **Carte étudiante** : « Check-in étudiant » ouvre d'abord un rappel « Demandez la carte étudiante AVANT de scanner le billet » avec « Carte vérifiée : ouvrir le check-in ↗ » ou « Pas de carte étudiante ». Sans carte : si les ventes sont ouvertes (V ≥ 1), « Ne pas scanner son billet étudiant » + bouton « Vendre 1 billet Autre · X $ » (vente pré-remplie) ; sinon « REFUSER L'ENTRÉE » avec la raison.
-- **Staff** : +1 pour l'arrivée d'un membre du staff. Ses sorties et réentrées passent par les boutons normaux.
+- **Staff** : compteur « − Staff N + » : « + » à l'arrivée d'un membre du staff, « − » quand il quitte pour de bon (grisé à 0). Ses sorties et réentrées temporaires passent par les boutons normaux.
 - **Vente** : feuille avec deux cartes, Étudiant et Autre, chacune avec son **prix appliqué** (automatique ou figé, §6.3, **figé à l'ouverture de la feuille**) et un compteur − / + (0 au départ). Total des billets ≤ min(10, V au moment de l'ouverture) ; « + » grisé au plafond. Bouton « Confirmer N billet(s) · X $ » (grisé si N = 0) → **une seule opération** `sale` pour tout le groupe, donc « Annuler dernier » annule le groupe entier.
 - **Billets disponibles** : sous les prix du bouton Vente, « V billet(s) disponible(s) », mis à jour en direct.
 - **Nouveau prix** : quand les prix appliqués changent, bandeau blanc clignotant « NOUVEAU PRIX : X $ · Y $ » pendant 10 s (si les ventes sont ouvertes).
@@ -134,7 +134,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - Bandeaux : alerte de capacité (même règle qu'au §6.1, en premier), `SUSPENDU`, `FERMÉ`, `FORÇAGE ACTIF`, et « ⚠ Hi.Events indique X billets (config : Y) » si un total Hi.Events diffère de T.
 - Les valeurs affichées sont arrondies à l'unité ; V est calculé exactement (§9).
 - **Tuile Staff** : nombre de staff comptés (somme des +Staff), à côté des tuiles de billets, pour tous les rôles.
-- **Version Viewer (vitrine « néon festif », vue publique)** : seul écran à lueurs néon (rose, cyan, or). Titre « NEON PARTY » en enseigne néon qui s'allume puis grésille ; chiffre héros = personnes dans la salle, compteur qui roule, bulle « +N / −N » à chaque changement, jauge de la salle animée, cadre qui pulse au rythme ; tuiles Billets étudiants, Billets réguliers et Staff (compteurs animés) ; égaliseur décoratif ; alerte de capacité seulement. Animations coupées si l'appareil demande moins de mouvement. Aucun V, prix, réserve, revenu ni bandeau de ventes. Bouton « Grand écran » (plein écran quand le navigateur le permet, chiffres agrandis) pour un écran de la sécurité.
+- **Version Viewer (vitrine « néon festif », vue publique)** : seul écran à lueurs néon (rose, cyan, or). Titre « NEON PARTY » en enseigne néon qui s'allume puis grésille ; chiffre héros = personnes dans la salle, compteur qui roule, bulle « +N / −N » à chaque changement, jauge de la salle animée, cadre qui pulse au rythme ; tuiles Billets étudiants, Billets réguliers et Staff (compteurs animés) ; alerte de capacité seulement. Animations coupées si l'appareil demande moins de mouvement. Aucun V, prix, réserve, revenu ni bandeau de ventes. Bouton « Grand écran » (plein écran quand le navigateur le permet, chiffres agrandis) pour un écran de la sécurité.
 
 ### 6.3 Gestion (`#/gestion`)
 
@@ -205,6 +205,7 @@ Courbe d'arrivée par défaut (F = part cumulée des arrivées des détenteurs d
 | type | Effet |
 |---|---|
 | staff | staff +1 |
+| staffOut | staff −1 |
 | sale | saleStudent +qty.student, saleOther +qty.other ; money.revenue + qty.student·prices.student + qty.other·prices.other |
 | exit | exit +1, exitW +w, avec w = 2^((clientAt − doorsOpen) / 20 min) |
 | reentry | reentry +1 |
@@ -353,6 +354,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | « − Staff » (opération `staffOut`, staff −1, règles mises à jour) ; égaliseur retiré de la vitrine Viewer |
 | 2026-09-24 | Nom SouthEvents Porte + logo ; tuile Staff (tous les rôles) ; vitrine Viewer « néon festif » animée |
 | 2026-09-24 | Refonte visuelle « Signalétique · Nuit » (choix C3) : fin du violet, des lueurs et des dégradés ; polices Barlow intégrées |
 | 2026-09-23 | Écran Porte : rappel de la carte étudiante avant le check-in étudiant ; sans carte, vendre au prix non-étudiant s'il reste de la place, sinon refuser |

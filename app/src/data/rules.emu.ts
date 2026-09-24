@@ -74,6 +74,13 @@ describe('A1.1 — règles de sécurité', () => {
     await assertSucceeds(getDoc(configDoc(f)));
   });
 
+  it('un Bouncer retire un staff (compteur −1), puis l’annule', async () => {
+    await assertSucceeds(buildOp(db('b1'), 'b1', { type: 'staffOut' }, 'op-out').batch.commit());
+    expect((await shard('b1')).staff).toBe(-1);
+    await assertSucceeds(buildOp(db('b1'), 'b1', { type: 'void', ref: 'op-out', original: { type: 'staffOut' } }).batch.commit());
+    expect((await shard('b1')).staff).toBe(0);
+  });
+
   it('un Bouncer compte un staff, mais pas dans le compteur d’un autre', async () => {
     await assertSucceeds(buildOp(db('b1'), 'b1', { type: 'staff' }).batch.commit());
     expect((await shard('b1')).staff).toBe(1);
