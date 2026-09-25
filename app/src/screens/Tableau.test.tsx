@@ -30,6 +30,8 @@ describe('Tableau', () => {
     const { container } = renderAs('viewer');
     expect(screen.getByRole('heading', { name: /Neon\s*Party/ })).toBeTruthy();
     expect(screen.getByText('Staff')).toBeTruthy();
+    expect(screen.getByText('Vendus à la porte')).toBeTruthy();
+    expect(screen.getByText('20 étudiants · 5 autres')).toBeTruthy();
     expect(container.textContent).not.toMatch(/\$|VOUS POUVEZ VENDRE/);
   });
 });

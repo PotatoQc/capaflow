@@ -278,6 +278,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       scanned,
       revenue,
       staff: totals.staff,
+      doorSales: { student: totals.saleStudent, other: totals.saleOther },
       scanAgeS: Number.isFinite(scansAgeMs) ? Math.max(0, Math.round(scansAgeMs / 1000)) : Infinity,
       salesOpen: eventData.salesOpen,
       forceSales: eventData.forceSales,

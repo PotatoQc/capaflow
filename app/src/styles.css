@@ -319,6 +319,7 @@ tr.voided td:not(.cell-action) { color: var(--muted); text-decoration: line-thro
 .show-full { color: var(--red); font-family: var(--display); font-size: clamp(28px, 7vw, 48px); font-weight: 700; letter-spacing: 0.06em; animation: pulse 1.2s ease-in-out infinite; }
 .show-rows { display: flex; flex-direction: column; margin-top: auto; }
 .show-row { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-top: 1px solid #262626; }
+.show-row em { display: block; margin-top: 2px; color: var(--muted); font-family: "Barlow", system-ui, sans-serif; font-size: 13px; font-style: normal; font-weight: 600; letter-spacing: 0; text-transform: none; }
 .show-row span { color: #b5b5b5; font-family: var(--display); font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .show-row strong { font-family: var(--display); font-size: 32px; font-weight: 700; }
 .show-row small { color: #6d6d6d; font-size: 20px; }

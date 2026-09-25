@@ -45,6 +45,7 @@ export type AppState = EngineOutput & {
   scanned: { student: number; regular: number };
   revenue: number;
   staff: number;
+  doorSales: { student: number; other: number };
   scanAgeS: number;
   salesOpen: boolean;
   forceSales: boolean;

@@ -37,11 +37,14 @@ function useCount(target: number) {
   return shown;
 }
 
-function Row({ label, value, total }: { label: string; value: number; total?: number }) {
+function Row({ label, value, total, note }: { label: string; value: number; total?: number; note?: string }) {
   const n = useCount(value);
   return (
     <div className="show-row">
-      <span>{label}</span>
+      <span>
+        {label}
+        {note && <em>{note}</em>}
+      </span>
       <strong>
         {n}
         {total !== undefined && <small> / {total}</small>}
@@ -82,6 +85,11 @@ export default function Vitrine() {
       <section className="show-rows">
         <Row label="Billets étudiants" value={s.scanned.student} total={TICKETS.student} />
         <Row label="Billets réguliers" value={s.scanned.regular} total={TICKETS.regular} />
+        <Row
+          label="Vendus à la porte"
+          value={s.doorSales.student + s.doorSales.other}
+          note={`${s.doorSales.student} étudiant${s.doorSales.student > 1 ? 's' : ''} · ${s.doorSales.other} autre${s.doorSales.other > 1 ? 's' : ''}`}
+        />
         <Row label="Staff" value={s.staff} />
       </section>
 
