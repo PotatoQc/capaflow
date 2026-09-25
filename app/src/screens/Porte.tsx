@@ -3,8 +3,9 @@ import { Link, Navigate } from 'react-router-dom';
 import { saleTotal, useApp, type OpType, type Sale } from '../data/AppContext';
 import { bornOnOrBefore } from '../data/event';
 import type { SalesState } from '../engine/computeState';
+import ConfirmDialog from './ConfirmDialog';
 import { useWakeLock } from './useWakeLock';
-import { APP_ID, isAndroid, readReturn, savePending, squareUrl, takePending } from '../square/square';
+import { APP_ID, isAndroid, isDone, markDone, readReturn, savePending, squareUrl, takePending } from '../square/square';
 
 const UNDO_MS = 30_000;
 const PRICE_NOTICE_MS = 10_000;
@@ -30,7 +31,8 @@ const CATEGORIES = [
 ] as const;
 
 export default function Porte() {
-  const { role, state, record, voidEntry } = useApp();
+  const { role, state, record, voidEntry, signOut } = useApp();
+  const [askLogout, setAskLogout] = useState(false);
   const [flash, setFlash] = useState<{ kind: 'plus' | 'minus'; key: number } | null>(null);
   const [last, setLast] = useState<{ id: string; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -44,10 +46,17 @@ export default function Porte() {
     const ret = readReturn(window.location.search);
     if (!ret || role === 'viewer') return;
     window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    if (ret.ok && ret.txn && isDone(ret.txn)) {
+      setSquareMsg({ ok: true, text: 'Ce paiement Square est déjà enregistré : rien à faire.' });
+      return;
+    }
     const sale = takePending();
     if (ret.ok && sale) {
       const id = record('sale', { sale });
-      setLast({ id, at: Date.now() });
+      if (ret.txn) markDone(ret.txn);
+      const t = Date.now();
+      setLast({ id, at: t });
+      setNow(t);
       setSquareMsg({ ok: true, text: `Paiement Square réussi · ${saleTotal(sale)} $ · vente enregistrée` });
     } else if (ret.ok) {
       setSquareMsg({ ok: false, text: 'Paiement Square reçu, mais la vente est introuvable : enregistrez-la avec « Payé sans Square ».' });
@@ -133,7 +142,11 @@ export default function Porte() {
   return (
     <main className="porte">
       <header className="porte-head">
-        {role !== 'bouncer' && <Link to="/tableau" className="back">‹ Tableau</Link>}
+        {role !== 'bouncer' ? (
+          <Link to="/tableau" className="back">‹ Tableau</Link>
+        ) : (
+          <button className="back" onClick={() => setAskLogout(true)}>Déconnexion</button>
+        )}
         <div className={`occ ${over >= 0 ? 'full' : ''}`}>
           <strong>{state.occupancy}</strong>
           <span>/{state.capacity}</span>
@@ -285,6 +298,16 @@ export default function Porte() {
             <button className="btn btn-ghost" onClick={() => setCardCheck(null)}>Fermer</button>
           </div>
         </div>
+      )}
+
+      {askLogout && (
+        <ConfirmDialog
+          title="Se déconnecter ?"
+          message="Il faudra se reconnecter avec un identifiant et un mot de passe pour compter à la porte."
+          confirmLabel="Se déconnecter"
+          onConfirm={signOut}
+          onCancel={() => setAskLogout(false)}
+        />
       )}
 
       {flash && <div key={flash.key} className={`flash ${flash.kind}`} onAnimationEnd={() => setFlash(null)} />}

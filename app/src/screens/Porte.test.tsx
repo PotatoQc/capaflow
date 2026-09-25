@@ -34,7 +34,10 @@ const renderPorte = () =>
     </MemoryRouter>,
   );
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
 
 describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 23 $)', () => {
   it('vente mixte (2 étudiants + 1 autre) puis annulation du groupe entier', () => {
@@ -79,6 +82,18 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
     expect(window.location.search).toBe('');
   });
 
+  it('adresse de retour rouverte : « déjà enregistré », rien n’est recompté', () => {
+    savePending({ student: 0, other: 1, priceStudent: 8, priceOther: 23 });
+    window.history.replaceState(null, '', '/?com.squareup.pos.SERVER_TRANSACTION_ID=t9');
+    renderPorte();
+    expect(screen.getByText('196')).toBeTruthy();
+    cleanup();
+    window.history.replaceState(null, '', '/?com.squareup.pos.SERVER_TRANSACTION_ID=t9');
+    renderPorte();
+    expect(screen.getByText('195')).toBeTruthy();
+    expect(screen.getByText(/déjà enregistré/)).toBeTruthy();
+  });
+
   it('retour de Square annulé : aucune vente', () => {
     savePending({ student: 0, other: 1, priceStudent: 8, priceOther: 23 });
     window.history.replaceState(null, '', '/?com.squareup.pos.ERROR_CODE=com.squareup.pos.ERROR_TRANSACTION_CANCELED');
@@ -108,6 +123,19 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
     fireEvent.click(screen.getByRole('button', { name: 'Retirer un staff' }));
     expect(screen.getByText('195')).toBeTruthy();
     expect(screen.getByText('20')).toBeTruthy();
+  });
+
+  it('Bouncer : bouton Déconnexion avec confirmation (pas de lien Tableau)', () => {
+    render(
+      <MemoryRouter>
+        <MemoryProvider role="bouncer">
+          <Porte />
+        </MemoryProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('‹ Tableau')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Déconnexion' }));
+    expect(screen.getByRole('alertdialog', { name: 'Se déconnecter ?' })).toBeTruthy();
   });
 
   it('dates limites d’âge au 25 septembre', () => {

@@ -9,7 +9,7 @@ const MAX_AGE_MS = 15 * 60_000;
 
 export const APP_ID = /^sq0id[a-z]-[A-Za-z0-9_-]{10,}$/;
 
-export type SquareReturn = { ok: true } | { ok: false; error: string };
+export type SquareReturn = { ok: true; txn?: string } | { ok: false; error: string };
 type Pending = { sale: Sale; at: number };
 
 export const callbackUrl = () => `${window.location.origin}/`;
@@ -66,6 +66,24 @@ export function takePending(): Sale | null {
   }
 }
 
+// Paiements déjà traités (identifiant de transaction Square) : une adresse de retour rouverte ne recompte rien.
+const DONE_KEY = 'se.squareDone';
+const readDone = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(DONE_KEY) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+};
+export const isDone = (txn: string) => readDone().includes(txn);
+export function markDone(txn: string) {
+  try {
+    localStorage.setItem(DONE_KEY, JSON.stringify([...readDone(), txn].slice(-20)));
+  } catch {
+    // Stockage bloqué : sans effet.
+  }
+}
+
 // Résultat renvoyé par Square dans l'adresse de retour : iOS (paramètre data en JSON) ou Android (paramètres séparés).
 export function readReturn(search: string): SquareReturn | null {
   const q = new URLSearchParams(search);
@@ -73,13 +91,13 @@ export function readReturn(search: string): SquareReturn | null {
   if (data !== null) {
     try {
       const d = JSON.parse(data) as Record<string, string>;
-      return d.error_code ? { ok: false, error: d.error_code } : { ok: true };
+      return d.error_code ? { ok: false, error: d.error_code } : { ok: true, txn: d.client_transaction_id ?? d.transaction_id };
     } catch {
       return { ok: false, error: 'réponse illisible' };
     }
   }
   const error = q.get('com.squareup.pos.ERROR_CODE');
   if (error) return { ok: false, error };
-  if (q.has('com.squareup.pos.SERVER_TRANSACTION_ID') || q.has('com.squareup.pos.CLIENT_TRANSACTION_ID')) return { ok: true };
-  return null;
+  const txn = q.get('com.squareup.pos.CLIENT_TRANSACTION_ID') ?? q.get('com.squareup.pos.SERVER_TRANSACTION_ID');
+  return txn !== null ? { ok: true, txn } : null;
 }

@@ -27,11 +27,11 @@ describe('Square Point of Sale (web mobile)', () => {
   });
 
   it('lit le retour : succès, erreur, ou aucun retour', () => {
-    expect(readReturn('?com.squareup.pos.SERVER_TRANSACTION_ID=t1')).toEqual({ ok: true });
+    expect(readReturn('?com.squareup.pos.SERVER_TRANSACTION_ID=t1')).toEqual({ ok: true, txn: 't1' });
     expect(readReturn('?com.squareup.pos.ERROR_CODE=com.squareup.pos.ERROR_TRANSACTION_CANCELED')).toEqual({
       ok: false, error: 'com.squareup.pos.ERROR_TRANSACTION_CANCELED',
     });
-    expect(readReturn(`?data=${encodeURIComponent(JSON.stringify({ transaction_id: 't2' }))}`)).toEqual({ ok: true });
+    expect(readReturn(`?data=${encodeURIComponent(JSON.stringify({ transaction_id: 't2' }))}`)).toEqual({ ok: true, txn: 't2' });
     expect(readReturn(`?data=${encodeURIComponent(JSON.stringify({ error_code: 'payment_canceled' }))}`)).toEqual({
       ok: false, error: 'payment_canceled',
     });
