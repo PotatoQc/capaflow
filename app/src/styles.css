@@ -115,13 +115,13 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 .zones {
   flex: 1; min-height: 0; display: grid; gap: 8px;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: minmax(30vh, 1fr) minmax(30vh, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
 }
 .zone {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   border-radius: 4px; background: var(--surface); color: #fff;
   font-family: var(--display); font-size: 38px; font-weight: 700; letter-spacing: 0.02em;
-  user-select: none; transition: transform 0.08s;
+  user-select: none; transition: transform 0.08s; overflow: hidden;
 }
 .zone:active { transform: scale(0.97); }
 .zone small { font-family: "Barlow", system-ui, sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, 0.75); }

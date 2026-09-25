@@ -10,6 +10,7 @@ import { APP_ID, isAndroid, isDone, markDone, readReturn, savePending, squareUrl
 const UNDO_MS = 30_000;
 const PRICE_NOTICE_MS = 10_000;
 const REJECT_SHOW_MS = 20_000;
+const SQUARE_MSG_MS = 10_000;
 const MAX_PER_SALE = 10;
 const CHECKINS = [
   { key: 'student', label: 'Check-in étudiant' },
@@ -70,6 +71,13 @@ export default function Porte() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Le bandeau de retour Square s'efface seul pour laisser la place aux boutons.
+  useEffect(() => {
+    if (!squareMsg) return;
+    const t = setTimeout(() => setSquareMsg(null), SQUARE_MSG_MS);
+    return () => clearTimeout(t);
+  }, [squareMsg]);
 
   useWakeLock();
 
