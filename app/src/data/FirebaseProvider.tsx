@@ -5,7 +5,7 @@ import {
 } from 'firebase/auth';
 import {
   Timestamp, collection, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch,
-  type WriteBatch,
+  type QuerySnapshot, type WriteBatch,
 } from 'firebase/firestore';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { computeState, type Params, type Pricing, type Totals } from '../engine/computeState';
@@ -22,6 +22,7 @@ import {
 } from './event';
 import { auth, db, firebaseConfig, loginEmail } from './firebase';
 import { EVENT_ID, ZERO_SHARD, buildOp, configDoc, ensureCounters, eventDoc, type Op } from './ops';
+import { addDeletes, addReads, addWrites, countSnapshot, myUsage, sumUsage, type Usage } from './usage';
 
 type EventDoc = {
   doorsOpen: Timestamp;
@@ -43,6 +44,12 @@ type LogDoc = (Op | { type: 'void'; ref: string }) & { uid: string; at: Timestam
 const ACTIVE: AccountRole[] = ['admin', 'manager', 'bouncer', 'viewer'];
 const COUNTERS: (keyof Totals)[] = ['staff', 'saleStudent', 'saleOther', 'exit', 'reentry', 'adjust', 'exitW'];
 const report = (e: unknown) => console.error('Écriture refusée', e);
+const USAGE_SYNC_MS = 120_000;
+// Compte les documents reçus du serveur avant de traiter l'instantané (PLAN §6.3, consommation Firebase).
+const tally = <S extends { metadata: { fromCache: boolean } }>(fn: (s: S) => void) => (s: S) => {
+  countSnapshot(s as S & { docChanges?: () => unknown[] });
+  fn(s);
+};
 
 function logDetail(d: LogDoc, all: Map<string, LogDoc>, names: Map<string, string>): string {
   switch (d.type) {
@@ -82,6 +89,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [pending, setPending] = useState(0);
   const [lastRejectAt, setLastRejectAt] = useState<number | null>(null);
+  const [usageDocs, setUsageDocs] = useState<(Usage & { day: string })[]>([]);
   const [pushed, setPushed] = useState<{ student: number; regular: number; at: number } | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [now, setNow] = useState(() => Date.now());
@@ -118,7 +126,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     let retry: ReturnType<typeof setTimeout> | undefined;
     const unsub = onSnapshot(
       doc(db, 'users', uid),
-      (s) => setProfile(s.exists() ? (s.data() as { role: AccountRole; username: string }) : null),
+      tally((s) => setProfile(s.exists() ? (s.data() as { role: AccountRole; username: string }) : null)),
       () => { retry = setTimeout(() => setProfileTry((n) => n + 1), 1000); },
     );
     return () => {
@@ -130,28 +138,49 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!role) return;
     const unsubs = [
-      onSnapshot(eventDoc(db), (s) => setEventData(s.exists() ? (s.data() as EventDoc) : null), () => setEventData(null)),
-      onSnapshot(collection(db, 'events', EVENT_ID, 'shards'), (s) => setShards(s.docs.map((d) => d.data() as Totals))),
+      onSnapshot(eventDoc(db), tally((s) => setEventData(s.exists() ? (s.data() as EventDoc) : null)), () => setEventData(null)),
+      onSnapshot(collection(db, 'events', EVENT_ID, 'shards'), tally((s: QuerySnapshot) => setShards(s.docs.map((d) => d.data() as Totals)))),
       // Totaux poussés par le webhook Hi.Events (~1 s) ; l'appel du Worker toutes les 15 s reste en secours.
-      onSnapshot(doc(db, 'events', EVENT_ID, 'scans', 'totals'), (s) => {
+      onSnapshot(doc(db, 'events', EVENT_ID, 'scans', 'totals'), tally((s) => {
         const d = s.data({ serverTimestamps: 'estimate' });
         setPushed(d ? { student: d.student, regular: d.regular, at: (d.at as Timestamp).toMillis() } : null);
-      }, () => setPushed(null)),
+      }), () => setPushed(null)),
     ];
-    if (isDoor) unsubs.push(onSnapshot(configDoc(db), (s) => setConfig(s.exists() ? (s.data() as ConfigDoc) : null), () => setConfig(null)));
+    if (isDoor) unsubs.push(onSnapshot(configDoc(db), tally((s) => setConfig(s.exists() ? (s.data() as ConfigDoc) : null)), () => setConfig(null)));
     if (isManager) {
       unsubs.push(
-        onSnapshot(collection(db, 'events', EVENT_ID, 'money'), (s) => setRevenue(s.docs.reduce((sum, d) => sum + (d.data().revenue as number), 0))),
-        onSnapshot(query(collection(db, 'events', EVENT_ID, 'log'), orderBy('at', 'desc'), limit(50)), (s) =>
-          setLogDocs(new Map(s.docs.map((d) => [d.id, d.data({ serverTimestamps: 'estimate' }) as LogDoc])))),
-        onSnapshot(collection(db, 'users'), (s) =>
-          setAccounts(s.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Account, 'uid'>) })).sort((a, b) => a.username.localeCompare(b.username)))),
+        onSnapshot(collection(db, 'events', EVENT_ID, 'money'), tally((s: QuerySnapshot) => setRevenue(s.docs.reduce((sum, d) => sum + (d.data().revenue as number), 0)))),
+        onSnapshot(query(collection(db, 'events', EVENT_ID, 'log'), orderBy('at', 'desc'), limit(50)), tally((s: QuerySnapshot) =>
+          setLogDocs(new Map(s.docs.map((d) => [d.id, d.data({ serverTimestamps: 'estimate' }) as LogDoc]))))),
+        onSnapshot(collection(db, 'users'), tally((s: QuerySnapshot) =>
+          setAccounts(s.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Account, 'uid'>) })).sort((a, b) => a.username.localeCompare(b.username))))),
+        onSnapshot(collection(db, 'events', EVENT_ID, 'usage'), tally((s: QuerySnapshot) => setUsageDocs(s.docs.map((d) => d.data() as Usage & { day: string })))),
       );
     }
     return () => unsubs.forEach((u) => u());
   }, [role, isDoor, isManager]);
 
   // Compteur et revenus de l'utilisateur créés à zéro au besoin (PLAN §7).
+  // Publie la consommation de cet appareil toutes les 2 min (seulement si elle a changé).
+  useEffect(() => {
+    if (!uid || !role) return;
+    let sent = '';
+    const sync = () => {
+      const u = myUsage();
+      const key = JSON.stringify(u);
+      if (key === sent) return;
+      sent = key;
+      addWrites(1);
+      setDoc(doc(db, 'events', EVENT_ID, 'usage', uid), { ...u, at: serverTimestamp() }).catch(report);
+    };
+    const first = setTimeout(sync, 10_000);
+    const t = setInterval(sync, USAGE_SYNC_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
+  }, [uid, role]);
+
   const hasEvent = !!eventData;
   useEffect(() => {
     if (uid && isDoor && hasEvent) ensureCounters(db, uid).catch(report);
@@ -206,7 +235,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     voided: voidedRefs.has(id),
   }));
 
-  const commit = (p: Promise<void>) => {
+  const commit = (p: Promise<void>, writes = 1) => {
+    addWrites(writes);
     setPending((n) => n + 1);
     p.catch((e) => {
       report(e);
@@ -254,6 +284,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       online,
       pending,
       lastRejectAt,
+      // Les poussées du webhook Hi.Events (≈ 1 écriture par scan) s'ajoutent aux appareils.
+      usage: isManager ? (({ reads, writes, deletes }) => ({ reads, writes: writes + scanned.student + scanned.regular, deletes }))(sumUsage(usageDocs)) : null,
       doorStudent: applied.student,
       doorOther: applied.other,
       params,
@@ -270,14 +302,14 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         : { type: type as 'staff' | 'staffOut' | 'reentry' };
       const { batch, id } = buildOp(db, user.uid, op);
       ownOps.current.set(id, op);
-      commit(batch.commit());
+      commit(batch.commit(), op.type === 'sale' ? 3 : 2);
       return id;
     },
     voidEntry: (id) => {
       const logged = logDocs.get(id);
       const original = logged ? toOp(logged) : ownOps.current.get(id);
       if (!original) return;
-      commit(buildOp(db, user.uid, { type: 'void', ref: id, original }).batch.commit());
+      commit(buildOp(db, user.uid, { type: 'void', ref: id, original }).batch.commit(), original.type === 'sale' ? 3 : 2);
     },
     setCapacity: (capacity) => updateEvent({ capacity }),
     setSalesOpen: (salesOpen) => updateEvent({ salesOpen }),
@@ -297,6 +329,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       }
       const cred = await createUserWithEmailAndPassword(secondaryAuth, loginEmail(username), password);
       await fbSignOut(secondaryAuth);
+      addWrites(1);
       await setDoc(doc(db, 'users', cred.user.uid), { username, name, role: newRole, createdAt: serverTimestamp() });
     },
     setAccountRole: (accountUid, r) => commit(updateDoc(doc(db, 'users', accountUid), { role: r })),
@@ -309,6 +342,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
         ...moneySnap.docs.map((d) => (b: WriteBatch) => b.set(d.ref, { revenue: 0, lastOp: '' })),
         ...logSnap.docs.map((d) => (b: WriteBatch) => b.delete(d.ref)),
       ];
+      addReads(shardSnap.size + moneySnap.size + logSnap.size);
+      addWrites(shardSnap.size + moneySnap.size);
+      addDeletes(logSnap.size);
       for (let i = 0; i < writes.length; i += 400) {
         const batch = writeBatch(db);
         writes.slice(i, i + 400).forEach((w) => w(batch));

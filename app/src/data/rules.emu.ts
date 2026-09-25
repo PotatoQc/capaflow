@@ -57,6 +57,18 @@ const read = async (path: string[]) => {
 };
 const shard = (uid: string) => read(['events', EVENT_ID, 'shards', uid]);
 
+describe('Consommation Firebase (usage)', () => {
+  const u = { day: '2026-09-25', reads: 120, writes: 30, deletes: 0, at: serverTimestamp() };
+  it('chacun publie sa propre consommation ; seul le Manager la lit', async () => {
+    await assertSucceeds(setDoc(doc(db('v'), 'events', EVENT_ID, 'usage', 'v'), u));
+    await assertSucceeds(setDoc(doc(db('b1'), 'events', EVENT_ID, 'usage', 'b1'), u));
+    await assertFails(setDoc(doc(db('b1'), 'events', EVENT_ID, 'usage', 'b2'), u));
+    await assertFails(setDoc(doc(db('b1'), 'events', EVENT_ID, 'usage', 'b1'), { ...u, reads: -1 }));
+    await assertFails(getDoc(doc(db('b1'), 'events', EVENT_ID, 'usage', 'b1')));
+    await assertSucceeds(getDoc(doc(db('manager'), 'events', EVENT_ID, 'usage', 'b1')));
+  });
+});
+
 describe('Compteurs du Bouncer', () => {
   it('ensureCounters crée les revenus d’un Bouncer (qui ne peut pas les lire), puis ne les écrase jamais', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

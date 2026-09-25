@@ -1,11 +1,26 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import Nav from './Nav';
-import { TYPE_LABEL, useApp, type Account } from '../data/AppContext';
+import { useApp, type Account } from '../data/AppContext';
 import { arrivalFraction } from '../engine/computeState';
 import { CURVE_HOURS, DEFAULT_CAPACITY, DOORS_OPEN, ROLE_LABEL, clock, localTimeToUtc, type AccountRole, type Role } from '../data/event';
 import ConfirmDialog from './ConfirmDialog';
 import { APP_ID } from '../square/square';
+import { DANGER, LIMITS, WARN, worstRatio } from '../data/usage';
+
+type Tab = 'soiree' | 'reglages' | 'admin';
+// Gestion par moment d'usage (PLAN §6.3).
+const TABS: { key: Tab; label: string; hint: string }[] = [
+  { key: 'soiree', label: 'Soirée', hint: 'Pendant la soirée : capacité, ventes, prix, corrections et consommation Firebase.' },
+  { key: 'reglages', label: 'Réglages', hint: 'Avant la soirée : Square, liens de check-in et réglages avancés du calcul.' },
+  { key: 'admin', label: 'Admin', hint: 'Comptes et remise à zéro des tests.' },
+];
+const USAGE_LABEL = { reads: 'Lectures', writes: 'Écritures', deletes: 'Suppressions' } as const;
+const USAGE_ADVICE = {
+  ok: 'Tout va bien : la marge est large pour la soirée.',
+  warn: 'Plus de 70 % utilisé : évitez de recharger les écrans inutilement et limitez les tests.',
+  danger: 'Plus de 90 % utilisé : risque de blocage avant 03:00. Gardez un décompte papier en secours.',
+} as const;
 
 type Confirm = { title: string; message: string; label: string; onConfirm: () => void; onCancel?: () => void };
 
@@ -24,8 +39,8 @@ const stepDelta = (d: number, by: number) => {
 
 export default function Gestion() {
   const {
-    role, state, log, setCapacity, setSalesOpen, setForceSales, lockDoorPrices, setPriceMode, setCheckinLinks, setParams,
-    setPricing, record, voidEntry, accounts, createAccount: addAccount, setAccountRole, resetCounts, setSquare,
+    role, state, setCapacity, setSalesOpen, setForceSales, lockDoorPrices, setPriceMode, setCheckinLinks, setParams,
+    setPricing, record, accounts, createAccount: addAccount, setAccountRole, resetCounts, setSquare,
   } = useApp();
   const [linksDraft, setLinksDraft] = useState(state.checkinLinks);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -45,6 +60,7 @@ export default function Gestion() {
   const [saved, setSaved] = useState<string | null>(null);
   const [resetError, setResetError] = useState('');
   const [squareId, setSquareId] = useState(state.square.appId);
+  const [tab, setTab] = useState<Tab>('soiree');
 
   if (role === 'bouncer') return <Navigate to="/porte" replace />;
   if (role === 'viewer') return <Navigate to="/tableau" replace />;
@@ -196,6 +212,9 @@ export default function Gestion() {
       },
     });
 
+  const worst = state.usage ? worstRatio(state.usage) : 0;
+  const usageTone: keyof typeof USAGE_ADVICE = worst >= DANGER ? 'danger' : worst >= WARN ? 'warn' : 'ok';
+
   const adminCount = accounts.filter((a) => a.role === 'admin').length;
   const isLastAdmin = (a: Account) => a.role === 'admin' && adminCount === 1;
 
@@ -203,317 +222,314 @@ export default function Gestion() {
     <div className="page">
       <Nav />
 
-      <div className="grid-2">
-        <section className="card">
-          <h2>Capacité et ventes</h2>
-          <p className="desc">
-            Nombre maximal de personnes dans la salle, staff inclus. Montez vers 300 seulement si la sécurité l'autorise.
-            « Ventes ouvertes » coupe ou rouvre toutes les ventes à la porte. « Forcer » permet de vendre même si les scans
-            Hi.Events ne sont plus à jour : à utiliser seulement après un décompte de la salle.
-          </p>
-          <div className="stepper">
-            <button onClick={() => cap(state.capacity - 5)}>−5</button>
-            <input
-              type="number" inputMode="numeric" min={1} max={300} aria-label="Capacité"
-              value={capDraft} onChange={(e) => setCapDraft(e.target.value)}
-              onBlur={() => cap(num(capDraft))} onKeyDown={(e) => e.key === 'Enter' && cap(num(capDraft))}
-            />
-            <button onClick={() => cap(state.capacity + 5)}>+5</button>
-          </div>
-          <p className="hint">De 1 à 300 (maximum de la salle). Valeur par défaut : 255. Validez avec Entrée.</p>
-          <label className="switch-row">
-            Ventes ouvertes
-            <input type="checkbox" className="switch" checked={state.salesOpen} onChange={(e) => toggleSales(e.target.checked)} />
-          </label>
-          <label className="switch-row">
-            Forcer malgré des scans périmés
-            <input type="checkbox" className="switch" checked={state.forceSales} onChange={(e) => toggleForce(e.target.checked)} />
-          </label>
-        </section>
+      <div className="tabs" role="tablist" aria-label="Sections de Gestion">
+        {TABS.filter((t) => t.key !== 'admin' || role === 'admin').map((t) => (
+          <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'active' : ''}
+            onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <p className="hint">{TABS.find((t) => t.key === tab)?.hint}</p>
 
-        <section className="card">
-          <h2>Prix à la porte</h2>
-          <p className="desc">
-            Prix demandés aux personnes sans billet. En mode <strong>Automatique</strong>, ils suivent la suggestion du
-            moteur (places vendables et heure) sans aucune action. <strong>Figé</strong> garde un prix fixe jusqu'au retour
-            en automatique. Les bouncers voient chaque changement.
-          </p>
-          <div className="segmented">
-            <button className={auto ? 'active plus' : ''} onClick={() => setPriceMode('auto')}>Automatique</button>
-            <button className={auto ? '' : 'active accent'} onClick={() => lockDoor(state.doorStudent, state.doorOther)}>Figé</button>
-          </div>
-          <p className="hint">
-            À la porte maintenant : <strong>{state.doorStudent} $ · {state.doorOther} $</strong> ({auto ? 'automatique' : 'figé'})
-            {!auto && state.suggested && ` · suggéré : ${state.suggested.student} $ · ${state.suggested.other} $`}
-          </p>
-          <div className="row">
-            <label className="field">
-              <span>Étudiant ($)</span>
-              <input type="number" inputMode="numeric" min={1} max={100} value={doorDraft.student}
-                onChange={(e) => setDoorDraft({ ...doorDraft, student: num(e.target.value) })} />
-            </label>
-            <label className="field">
-              <span>Autre ($)</span>
-              <input type="number" inputMode="numeric" min={1} max={100} value={doorDraft.other}
-                onChange={(e) => setDoorDraft({ ...doorDraft, other: num(e.target.value) })} />
-            </label>
-          </div>
-          <div className="card-actions">
-            <button className="btn btn-primary" disabled={!validPrice(doorDraft.student) || !validPrice(doorDraft.other)}
-              onClick={() => lockDoor(doorDraft.student, doorDraft.other)}>
-              Figer ces prix
-            </button>
-            {saved === 'door' && <span className="saved">✓ Prix figés à la porte</span>}
-          </div>
-        </section>
-
-        <section className="card">
-          <h2>Ajustement du compte</h2>
-          <p className="desc">
-            Corrige le compteur de la salle quand il ne correspond plus à la réalité. Faites un décompte, choisissez
-            d'ajouter ou de retirer, puis entrez la différence. Le motif est obligatoire et tout est inscrit au journal.
-          </p>
-          <div className="segmented">
-            <button className={sign > 0 ? 'active plus' : ''} onClick={() => setSign(1)}>+ Ajouter</button>
-            <button className={sign < 0 ? 'active minus' : ''} onClick={() => setSign(-1)}>− Retirer</button>
-          </div>
-          <div className="stepper">
-            <button onClick={() => stepAdjust(-1)} aria-label="Diminuer">−</button>
-            <input
-              type="number" inputMode="numeric" min={1} max={50} aria-label="Nombre de personnes"
-              value={amount} onChange={(e) => setAmount(e.target.value)}
-            />
-            <button onClick={() => stepAdjust(1)} aria-label="Augmenter">+</button>
-          </div>
-          <p className="hint">De 1 à 50 personnes.</p>
-          <label className="field">
-            <span>Motif</span>
-            <input value={reason} maxLength={200} placeholder="Ex. : décompte de 23 h" onChange={(e) => setReason(e.target.value)} />
-          </label>
-          <div className="card-actions">
-            <button className="btn btn-primary" disabled={!reason.trim() || count < 1} onClick={applyAdjust}>
-              Appliquer {sign > 0 ? '+' : '−'}{count}
-            </button>
-            {saved === 'adjust' && <span className="saved">✓ Inscrit au journal</span>}
-          </div>
-        </section>
-
-        <section className="card">
-          <h2>Paramètres du moteur</h2>
-          <p className="desc">
-            Servent à estimer combien de détenteurs de billets vont encore arriver. <strong>Tout s'ajuste seul pendant la
-            soirée</strong> : si les scans sont en retard sur la courbe, elle est décalée (les détenteurs sont supposés en
-            retard, jusqu'à 2 h) ; si plus de monde arrive que prévu, r̂ monte ; si plus de gens reviennent que prévu, q̂
-            monte. Les valeurs ci-dessous ne sont que le point de départ, à régler avant la soirée.
-          </p>
-          <div className="row">
-            <label className="field">
-              <span>r₀ de départ étudiant (%)</span>
-              <input type="number" min={0} max={100} value={r0.student} onChange={(e) => setR0({ ...r0, student: clamp(num(e.target.value), 0, 100) })} />
-            </label>
-            <label className="field">
-              <span>r₀ de départ régulier (%)</span>
-              <input type="number" min={0} max={100} value={r0.regular} onChange={(e) => setR0({ ...r0, regular: clamp(num(e.target.value), 0, 100) })} />
-            </label>
-            <label className="field">
-              <span>q de départ, retour (%)</span>
-              <input type="number" min={0} max={100} value={q} onChange={(e) => setQ(clamp(num(e.target.value), 0, 100))} />
-            </label>
-          </div>
-          <div className="learned">
-            <span>Ajusté automatiquement</span>
-            <strong>Retard détecté : {Math.round(state.delayMs / 60_000)} min</strong>
-            <strong>r̂ étudiant : {pct(state.rHat.student)} % · r̂ régulier : {pct(state.rHat.regular)} %</strong>
-            <strong>q̂ retour : {pct(state.qHat)} %</strong>
-          </div>
-          <table>
-            <thead>
-              <tr><th>Heure</th><th>Départ F (%)</th><th>Ajusté (%)</th></tr>
-            </thead>
-            <tbody>
-              {CURVE_HOURS.map((h, i) => (
-                <tr key={h}>
-                  <td>{h}</td>
-                  <td>
-                    <input
-                      className="cell-input" type="number" min={0} max={100} aria-label={`F à ${h}`}
-                      value={curve[i]}
-                      onChange={(e) => setCurve(curve.map((v, j) => (j === i ? clamp(num(e.target.value), 0, 100) : v)))}
-                    />
-                  </td>
-                  <td className="adjusted">
-                    {pct(arrivalFraction(state.params.arrivalCurve, state.params.arrivalCurve[i].t - state.delayMs))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {paramsError && <p className="error">{paramsError}</p>}
-          <div className="card-actions">
-            <button className="btn btn-sm" disabled={!!paramsError} onClick={saveParams}>Enregistrer</button>
-            {saved === 'params' && <span className="saved">✓ Enregistré</span>}
-          </div>
-        </section>
-
-        <section className="card">
-          <h2>Calcul de la suggestion</h2>
-          <p className="desc">
-            Règles du prix suggéré : prix de base × multiplicateur selon les places vendables (V), puis × multiplicateur
-            horaire en fin de soirée. Ne change pas les prix à la porte tant que vous ne les appliquez pas.
-          </p>
-          <div className="row">
-            <label className="field">
-              <span>Base étudiant ($)</span>
-              <input type="number" min={1} value={base.student} onChange={(e) => setBase({ ...base, student: num(e.target.value) })} />
-            </label>
-            <label className="field">
-              <span>Base autre ($)</span>
-              <input type="number" min={1} value={base.other} onChange={(e) => setBase({ ...base, other: num(e.target.value) })} />
-            </label>
-          </div>
-          <table>
-            <thead>
-              <tr><th>V minimum</th><th>Multiplicateur</th><th>Étudiant</th><th>Autre</th></tr>
-            </thead>
-            <tbody>
-              {tiers.map((t, i) => (
-                <tr key={i}>
-                  <td>
-                    <input className="cell-input" type="number" min={1} aria-label={`V minimum du palier ${i + 1}`} value={t.min}
-                      onChange={(e) => setTiers(tiers.map((x, j) => (j === i ? { ...x, min: num(e.target.value) } : x)))} />
-                  </td>
-                  <td>
-                    <input className="cell-input" type="number" step={0.05} min={0} aria-label={`Multiplicateur du palier ${i + 1}`} value={t.mult}
-                      onChange={(e) => setTiers(tiers.map((x, j) => (j === i ? { ...x, mult: num(e.target.value) } : x)))} />
-                  </td>
-                  <td>{Math.round(base.student * t.mult)} $</td>
-                  <td>{Math.round(base.other * t.mult)} $</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="row">
-            <label className="field">
-              <span>Règle horaire : à partir de</span>
-              <input type="time" value={timeRule.from} onChange={(e) => setTimeRule({ ...timeRule, from: e.target.value })} />
-            </label>
-            <label className="field">
-              <span>Multiplicateur</span>
-              <input type="number" step={0.05} min={0} value={timeRule.mult} onChange={(e) => setTimeRule({ ...timeRule, mult: num(e.target.value) })} />
-            </label>
-          </div>
-          {pricingError && <p className="error">{pricingError}</p>}
-          <div className="card-actions">
-            <button className="btn btn-sm" disabled={!!pricingError} onClick={savePricing}>Enregistrer</button>
-            {saved === 'prices' && <span className="saved">✓ Enregistré</span>}
-          </div>
-        </section>
-
-        <section className="card wide">
-          <h2>Journal <span className="muted">· 50 dernières entrées</span></h2>
-          <p className="desc">
-            Toutes les actions de la soirée, la plus récente en haut. « Annuler » retire l'effet d'une action faite par
-            erreur (ex. une vente en double) ; l'annulation est elle-même inscrite au journal.
-          </p>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Heure</th><th>Utilisateur</th><th>Action</th><th>Détail</th><th /></tr>
-              </thead>
-              <tbody>
-                {log.map((e) => (
-                  <tr key={e.id} className={e.voided ? 'voided' : ''}>
-                    <td>{e.time}</td>
-                    <td>{e.user}</td>
-                    <td>{TYPE_LABEL[e.type]}</td>
-                    <td>{e.detail}</td>
-                    <td className="cell-action">
-                      {e.voided ? (
-                        <span className="badge">Annulé</span>
-                      ) : (
-                        e.type !== 'void' && <button className="btn btn-sm" onClick={() => voidEntry(e.id)}>Annuler</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="card wide">
-          <h2>Paiement Square</h2>
-          <p className="desc">
-            Activé : « Vente » ouvre l'app Square avec le montant, et la vente n'est comptée que si le paiement réussit.
-            Désactivé : on revient à la méthode actuelle (payer dans Square, puis confirmer la vente ici). Chaque
-            téléphone doit avoir l'app Square Point of Sale installée et connectée.
-          </p>
-          <label className="switch-row">
-            Payer avec Square depuis l'app
-            <input type="checkbox" className="switch" checked={state.square.enabled} disabled={!APP_ID.test(state.square.appId)}
-              onChange={(e) => setSquare({ enabled: e.target.checked, appId: state.square.appId })} />
-          </label>
-          <div className="row">
-            <label className="field">
-              <span>Application ID Square</span>
-              <input value={squareId} placeholder="sq0idp-…" autoCapitalize="none" onChange={(e) => setSquareId(e.target.value.trim())} />
-            </label>
-          </div>
-          {squareId !== '' && !APP_ID.test(squareId) && <p className="error">Format attendu : sq0idp-… (Developer Dashboard de Square).</p>}
-          <p className="hint">Adresse de retour à enregistrer dans Square (Point of Sale API › Web) : {window.location.origin}/</p>
-          <div className="card-actions">
-            <button className="btn btn-primary" disabled={squareId !== '' && !APP_ID.test(squareId)}
-              onClick={() => { setSquare({ enabled: state.square.enabled && squareId !== '', appId: squareId }); save('square'); }}>
-              Enregistrer l'ID
-            </button>
-            {saved === 'square' && <span className="saved">✓ Enregistré</span>}
-          </div>
-        </section>
-
-        {role === 'admin' && (
-          <section className="card wide">
-            <h2>Liens de check-in</h2>
+      {tab === 'soiree' && (
+        <div className="grid-2">
+          <section className="card">
+            <h2>Capacité et ventes</h2>
             <p className="desc">
-              Liens des pages de check-in Hi.Events, affichés en boutons sur l'écran Porte. Ils permettent de valider des
-              billets sans mot de passe : ils ne sont visibles que par les Admins, Managers et Bouncers, jamais dans le code.
+              Nombre maximal de personnes dans la salle, staff inclus. Montez vers 300 seulement si la sécurité l'autorise.
+              « Ventes ouvertes » coupe ou rouvre toutes les ventes à la porte. « Forcer » permet de vendre même si les scans
+              Hi.Events ne sont plus à jour : à utiliser seulement après un décompte de la salle.
+            </p>
+            <div className="stepper">
+              <button onClick={() => cap(state.capacity - 5)}>−5</button>
+              <input
+                type="number" inputMode="numeric" min={1} max={300} aria-label="Capacité"
+                value={capDraft} onChange={(e) => setCapDraft(e.target.value)}
+                onBlur={() => cap(num(capDraft))} onKeyDown={(e) => e.key === 'Enter' && cap(num(capDraft))}
+              />
+              <button onClick={() => cap(state.capacity + 5)}>+5</button>
+            </div>
+            <p className="hint">De 1 à 300 (maximum de la salle). Valeur par défaut : 255. Validez avec Entrée.</p>
+            <label className="switch-row">
+              Ventes ouvertes
+              <input type="checkbox" className="switch" checked={state.salesOpen} onChange={(e) => toggleSales(e.target.checked)} />
+            </label>
+            <label className="switch-row">
+              Forcer malgré des scans périmés
+              <input type="checkbox" className="switch" checked={state.forceSales} onChange={(e) => toggleForce(e.target.checked)} />
+            </label>
+          </section>
+
+          <section className="card">
+            <h2>Prix à la porte</h2>
+            <p className="desc">
+              Prix demandés aux personnes sans billet. En mode <strong>Automatique</strong>, ils suivent la suggestion du
+              moteur (places vendables et heure) sans aucune action. <strong>Figé</strong> garde un prix fixe jusqu'au retour
+              en automatique. Les bouncers voient chaque changement.
+            </p>
+            <div className="segmented">
+              <button className={auto ? 'active plus' : ''} onClick={() => setPriceMode('auto')}>Automatique</button>
+              <button className={auto ? '' : 'active accent'} onClick={() => lockDoor(state.doorStudent, state.doorOther)}>Figé</button>
+            </div>
+            <p className="hint">
+              À la porte maintenant : <strong>{state.doorStudent} $ · {state.doorOther} $</strong> ({auto ? 'automatique' : 'figé'})
+              {!auto && state.suggested && ` · suggéré : ${state.suggested.student} $ · ${state.suggested.other} $`}
             </p>
             <div className="row">
               <label className="field">
-                <span>Lien check-in étudiant</span>
-                <input type="url" value={linksDraft.student} placeholder="https://app.hi.events/check-in/cil_…"
-                  onChange={(e) => setLinksDraft({ ...linksDraft, student: e.target.value })} />
+                <span>Étudiant ($)</span>
+                <input type="number" inputMode="numeric" min={1} max={100} value={doorDraft.student}
+                  onChange={(e) => setDoorDraft({ ...doorDraft, student: num(e.target.value) })} />
               </label>
               <label className="field">
-                <span>Lien check-in régulier</span>
-                <input type="url" value={linksDraft.regular} placeholder="https://app.hi.events/check-in/cil_…"
-                  onChange={(e) => setLinksDraft({ ...linksDraft, regular: e.target.value })} />
+                <span>Autre ($)</span>
+                <input type="number" inputMode="numeric" min={1} max={100} value={doorDraft.other}
+                  onChange={(e) => setDoorDraft({ ...doorDraft, other: num(e.target.value) })} />
               </label>
             </div>
-            {linksError && <p className="error">{linksError}</p>}
             <div className="card-actions">
-              <button className="btn btn-primary" disabled={!!linksError} onClick={saveLinks}>Enregistrer les liens</button>
-              {saved === 'links' && <span className="saved">✓ Liens enregistrés</span>}
+              <button className="btn btn-primary" disabled={!validPrice(doorDraft.student) || !validPrice(doorDraft.other)}
+                onClick={() => lockDoor(doorDraft.student, doorDraft.other)}>
+                Figer ces prix
+              </button>
+              {saved === 'door' && <span className="saved">✓ Prix figés à la porte</span>}
             </div>
           </section>
-        )}
 
-        {role === 'admin' && (
-          <section className="card wide">
-            <h2>Remise à zéro (tests)</h2>
+          <section className="card">
+            <h2>Ajustement du compte</h2>
             <p className="desc">
-              Pour repartir à neuf après des essais : journal effacé, compteurs et revenus à 0. La configuration est
-              conservée. Bloquée dès l'ouverture des portes (ven. 19:00) pour protéger les données de la soirée.
+              Corrige le compteur de la salle quand il ne correspond plus à la réalité. Faites un décompte, choisissez
+              d'ajouter ou de retirer, puis entrez la différence. Le motif est obligatoire et tout est inscrit au journal.
             </p>
-            {resetError && <p className="error">{resetError}</p>}
+            <div className="segmented">
+              <button className={sign > 0 ? 'active plus' : ''} onClick={() => setSign(1)}>+ Ajouter</button>
+              <button className={sign < 0 ? 'active minus' : ''} onClick={() => setSign(-1)}>− Retirer</button>
+            </div>
+            <div className="stepper">
+              <button onClick={() => stepAdjust(-1)} aria-label="Diminuer">−</button>
+              <input
+                type="number" inputMode="numeric" min={1} max={50} aria-label="Nombre de personnes"
+                value={amount} onChange={(e) => setAmount(e.target.value)}
+              />
+              <button onClick={() => stepAdjust(1)} aria-label="Augmenter">+</button>
+            </div>
+            <p className="hint">De 1 à 50 personnes.</p>
+            <label className="field">
+              <span>Motif</span>
+              <input value={reason} maxLength={200} placeholder="Ex. : décompte de 23 h" onChange={(e) => setReason(e.target.value)} />
+            </label>
             <div className="card-actions">
-              <button className="btn" disabled={doorsOpened} onClick={askReset}>Tout remettre à zéro</button>
-              {doorsOpened && <span className="hint">Portes ouvertes : remise à zéro désactivée.</span>}
-              {saved === 'reset' && <span className="saved">✓ Remis à zéro</span>}
+              <button className="btn btn-primary" disabled={!reason.trim() || count < 1} onClick={applyAdjust}>
+                Appliquer {sign > 0 ? '+' : '−'}{count}
+              </button>
+              {saved === 'adjust' && <span className="saved">✓ Inscrit au journal</span>}
             </div>
           </section>
-        )}
 
-        {role === 'admin' && (
+          <section className={`card usage ${usageTone}`}>
+            <h2>Firebase · consommation du jour</h2>
+            <p className="desc">
+              Limites gratuites de la base de données, remises à zéro chaque nuit à 03:00. Si une limite est atteinte,
+              la base refuse les actions jusqu'à 03:00. Estimation faite par l'app (mise à jour toutes les 2 min) ;
+              chiffres exacts : console Firebase › Firestore › Utilisation.
+            </p>
+            {state.usage && (Object.keys(LIMITS) as (keyof typeof LIMITS)[]).map((k) => {
+              const ratio = state.usage![k] / LIMITS[k];
+              return (
+                <div key={k} className="usage-row">
+                  <span>{USAGE_LABEL[k]}</span>
+                  <strong>{state.usage![k].toLocaleString('fr-CA')} <small>/ {LIMITS[k].toLocaleString('fr-CA')}</small></strong>
+                  <div className={`bar ${ratio >= DANGER ? 'red' : ratio >= WARN ? 'yellow' : ''}`}>
+                    <i style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            <p className="hint">{USAGE_ADVICE[usageTone]}</p>
+          </section>
+        </div>
+      )}
+
+      {tab === 'reglages' && (
+        <div className="grid-2">
+          <section className="card wide">
+            <h2>Paiement Square</h2>
+            <p className="desc">
+              Activé : « Vente » ouvre l'app Square avec le montant, et la vente n'est comptée que si le paiement réussit.
+              Désactivé : on revient à la méthode actuelle (payer dans Square, puis confirmer la vente ici). Chaque
+              téléphone doit avoir l'app Square Point of Sale installée et connectée.
+            </p>
+            <label className="switch-row">
+              Payer avec Square depuis l'app
+              <input type="checkbox" className="switch" checked={state.square.enabled} disabled={!APP_ID.test(state.square.appId)}
+                onChange={(e) => setSquare({ enabled: e.target.checked, appId: state.square.appId })} />
+            </label>
+            <div className="row">
+              <label className="field">
+                <span>Application ID Square</span>
+                <input value={squareId} placeholder="sq0idp-…" autoCapitalize="none" onChange={(e) => setSquareId(e.target.value.trim())} />
+              </label>
+            </div>
+            {squareId !== '' && !APP_ID.test(squareId) && <p className="error">Format attendu : sq0idp-… (Developer Dashboard de Square).</p>}
+            <p className="hint">Adresse de retour à enregistrer dans Square (Point of Sale API › Web) : {window.location.origin}/</p>
+            <div className="card-actions">
+              <button className="btn btn-primary" disabled={squareId !== '' && !APP_ID.test(squareId)}
+                onClick={() => { setSquare({ enabled: state.square.enabled && squareId !== '', appId: squareId }); save('square'); }}>
+                Enregistrer l'ID
+              </button>
+              {saved === 'square' && <span className="saved">✓ Enregistré</span>}
+            </div>
+          </section>
+
+          {role === 'admin' && (
+            <section className="card wide">
+              <h2>Liens de check-in</h2>
+              <p className="desc">
+                Liens des pages de check-in Hi.Events, affichés en boutons sur l'écran Porte. Ils permettent de valider des
+                billets sans mot de passe : ils ne sont visibles que par les Admins, Managers et Bouncers, jamais dans le code.
+              </p>
+              <div className="row">
+                <label className="field">
+                  <span>Lien check-in étudiant</span>
+                  <input type="url" value={linksDraft.student} placeholder="https://app.hi.events/check-in/cil_…"
+                    onChange={(e) => setLinksDraft({ ...linksDraft, student: e.target.value })} />
+                </label>
+                <label className="field">
+                  <span>Lien check-in régulier</span>
+                  <input type="url" value={linksDraft.regular} placeholder="https://app.hi.events/check-in/cil_…"
+                    onChange={(e) => setLinksDraft({ ...linksDraft, regular: e.target.value })} />
+                </label>
+              </div>
+              {linksError && <p className="error">{linksError}</p>}
+              <div className="card-actions">
+                <button className="btn btn-primary" disabled={!!linksError} onClick={saveLinks}>Enregistrer les liens</button>
+                {saved === 'links' && <span className="saved">✓ Liens enregistrés</span>}
+              </div>
+            </section>
+          )}
+
+          <details className="card wide advanced">
+            <summary>Réglages avancés : moteur et calcul des prix</summary>
+            <div className="grid-2">
+            <section className="card">
+              <h2>Paramètres du moteur</h2>
+              <p className="desc">
+                Servent à estimer combien de détenteurs de billets vont encore arriver. <strong>Tout s'ajuste seul pendant la
+                soirée</strong> : si les scans sont en retard sur la courbe, elle est décalée (les détenteurs sont supposés en
+                retard, jusqu'à 2 h) ; si plus de monde arrive que prévu, r̂ monte ; si plus de gens reviennent que prévu, q̂
+                monte. Les valeurs ci-dessous ne sont que le point de départ, à régler avant la soirée.
+              </p>
+              <div className="row">
+                <label className="field">
+                  <span>r₀ de départ étudiant (%)</span>
+                  <input type="number" min={0} max={100} value={r0.student} onChange={(e) => setR0({ ...r0, student: clamp(num(e.target.value), 0, 100) })} />
+                </label>
+                <label className="field">
+                  <span>r₀ de départ régulier (%)</span>
+                  <input type="number" min={0} max={100} value={r0.regular} onChange={(e) => setR0({ ...r0, regular: clamp(num(e.target.value), 0, 100) })} />
+                </label>
+                <label className="field">
+                  <span>q de départ, retour (%)</span>
+                  <input type="number" min={0} max={100} value={q} onChange={(e) => setQ(clamp(num(e.target.value), 0, 100))} />
+                </label>
+              </div>
+              <div className="learned">
+                <span>Ajusté automatiquement</span>
+                <strong>Retard détecté : {Math.round(state.delayMs / 60_000)} min</strong>
+                <strong>r̂ étudiant : {pct(state.rHat.student)} % · r̂ régulier : {pct(state.rHat.regular)} %</strong>
+                <strong>q̂ retour : {pct(state.qHat)} %</strong>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>Heure</th><th>Départ F (%)</th><th>Ajusté (%)</th></tr>
+                </thead>
+                <tbody>
+                  {CURVE_HOURS.map((h, i) => (
+                    <tr key={h}>
+                      <td>{h}</td>
+                      <td>
+                        <input
+                          className="cell-input" type="number" min={0} max={100} aria-label={`F à ${h}`}
+                          value={curve[i]}
+                          onChange={(e) => setCurve(curve.map((v, j) => (j === i ? clamp(num(e.target.value), 0, 100) : v)))}
+                        />
+                      </td>
+                      <td className="adjusted">
+                        {pct(arrivalFraction(state.params.arrivalCurve, state.params.arrivalCurve[i].t - state.delayMs))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {paramsError && <p className="error">{paramsError}</p>}
+              <div className="card-actions">
+                <button className="btn btn-sm" disabled={!!paramsError} onClick={saveParams}>Enregistrer</button>
+                {saved === 'params' && <span className="saved">✓ Enregistré</span>}
+              </div>
+            </section>
+
+            <section className="card">
+              <h2>Calcul de la suggestion</h2>
+              <p className="desc">
+                Règles du prix suggéré : prix de base × multiplicateur selon les places vendables (V), puis × multiplicateur
+                horaire en fin de soirée. Ne change pas les prix à la porte tant que vous ne les appliquez pas.
+              </p>
+              <div className="row">
+                <label className="field">
+                  <span>Base étudiant ($)</span>
+                  <input type="number" min={1} value={base.student} onChange={(e) => setBase({ ...base, student: num(e.target.value) })} />
+                </label>
+                <label className="field">
+                  <span>Base autre ($)</span>
+                  <input type="number" min={1} value={base.other} onChange={(e) => setBase({ ...base, other: num(e.target.value) })} />
+                </label>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>V minimum</th><th>Multiplicateur</th><th>Étudiant</th><th>Autre</th></tr>
+                </thead>
+                <tbody>
+                  {tiers.map((t, i) => (
+                    <tr key={i}>
+                      <td>
+                        <input className="cell-input" type="number" min={1} aria-label={`V minimum du palier ${i + 1}`} value={t.min}
+                          onChange={(e) => setTiers(tiers.map((x, j) => (j === i ? { ...x, min: num(e.target.value) } : x)))} />
+                      </td>
+                      <td>
+                        <input className="cell-input" type="number" step={0.05} min={0} aria-label={`Multiplicateur du palier ${i + 1}`} value={t.mult}
+                          onChange={(e) => setTiers(tiers.map((x, j) => (j === i ? { ...x, mult: num(e.target.value) } : x)))} />
+                      </td>
+                      <td>{Math.round(base.student * t.mult)} $</td>
+                      <td>{Math.round(base.other * t.mult)} $</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="row">
+                <label className="field">
+                  <span>Règle horaire : à partir de</span>
+                  <input type="time" value={timeRule.from} onChange={(e) => setTimeRule({ ...timeRule, from: e.target.value })} />
+                </label>
+                <label className="field">
+                  <span>Multiplicateur</span>
+                  <input type="number" step={0.05} min={0} value={timeRule.mult} onChange={(e) => setTimeRule({ ...timeRule, mult: num(e.target.value) })} />
+                </label>
+              </div>
+              {pricingError && <p className="error">{pricingError}</p>}
+              <div className="card-actions">
+                <button className="btn btn-sm" disabled={!!pricingError} onClick={savePricing}>Enregistrer</button>
+                {saved === 'prices' && <span className="saved">✓ Enregistré</span>}
+              </div>
+            </section>
+            </div>
+          </details>
+        </div>
+      )}
+
+      {tab === 'admin' && role === 'admin' && (
+        <div className="grid-2">
           <section className="card wide">
             <h2>Comptes</h2>
             <p className="desc">
@@ -578,8 +594,22 @@ export default function Gestion() {
               {saved === 'accounts' && <span className="saved">✓ Compte créé</span>}
             </div>
           </section>
-        )}
-      </div>
+
+          <section className="card wide">
+            <h2>Remise à zéro (tests)</h2>
+            <p className="desc">
+              Pour repartir à neuf après des essais : journal effacé, compteurs et revenus à 0. La configuration est
+              conservée. Bloquée dès l'ouverture des portes (ven. 19:00) pour protéger les données de la soirée.
+            </p>
+            {resetError && <p className="error">{resetError}</p>}
+            <div className="card-actions">
+              <button className="btn" disabled={doorsOpened} onClick={askReset}>Tout remettre à zéro</button>
+              {doorsOpened && <span className="hint">Portes ouvertes : remise à zéro désactivée.</span>}
+              {saved === 'reset' && <span className="saved">✓ Remis à zéro</span>}
+            </div>
+          </section>
+        </div>
+      )}
 
       {confirm && (
         <ConfirmDialog

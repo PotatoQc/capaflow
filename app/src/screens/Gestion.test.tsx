@@ -49,8 +49,26 @@ describe('Écran Gestion', () => {
     expect(toggle.checked).toBe(false);
   });
 
+  it('onglets : Soirée par défaut ; l’onglet Admin est réservé à l’Admin', () => {
+    renderGestion();
+    expect(screen.getByRole('tab', { name: 'Soirée' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.queryByRole('tab', { name: 'Admin' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: /Journal/ })).toBeNull();
+    cleanup();
+    renderGestion('admin');
+    expect(screen.getByRole('tab', { name: 'Admin' })).toBeTruthy();
+  });
+
+  it('Firebase : consommation du jour avec alerte au-delà de 70 %', () => {
+    renderGestion();
+    expect(screen.getByText('Firebase · consommation du jour')).toBeTruthy();
+    expect(screen.getByText(/36 000/)).toBeTruthy();
+    expect(screen.getByText(/Plus de 70 % utilisé/)).toBeTruthy();
+  });
+
   it('prix : un multiplicateur à 0 bloque l’enregistrement', () => {
     renderGestion();
+    fireEvent.click(screen.getByRole('tab', { name: 'Réglages' }));
     fireEvent.change(screen.getByLabelText('Multiplicateur du palier 1'), { target: { value: '0' } });
     expect(screen.getByText('Multiplicateurs de palier : entre 0,05 et 5.')).toBeTruthy();
     expect((screen.getAllByRole('button', { name: 'Enregistrer' })[1] as HTMLButtonElement).disabled).toBe(true);
@@ -65,6 +83,7 @@ describe('Écran Gestion', () => {
 
   it('liens de check-in : seuls les liens Hi.Events sont acceptés', () => {
     renderGestion('admin');
+    fireEvent.click(screen.getByRole('tab', { name: 'Réglages' }));
     const field = screen.getByLabelText('Lien check-in étudiant');
     const save = screen.getByRole('button', { name: 'Enregistrer les liens' }) as HTMLButtonElement;
     for (const bad of ['javascript:alert(1)', 'https://evil.example/check-in/cil_x', 'http://app.hi.events/check-in/cil_x']) {
@@ -77,6 +96,7 @@ describe('Écran Gestion', () => {
 
   it('le dernier Admin ne peut pas être désactivé', () => {
     renderGestion('admin');
+    fireEvent.click(screen.getByRole('tab', { name: 'Admin' }));
     const buttons = screen.getAllByRole('button', { name: 'Désactiver' }) as HTMLButtonElement[];
     expect(buttons[0].disabled).toBe(true);
     expect(buttons[1].disabled).toBe(false);

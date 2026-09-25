@@ -225,6 +225,28 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 .tile-value.red { color: var(--red); }
 .bar { height: 6px; border-radius: 0; background: var(--surface-2); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--text); }
+.bar.yellow i { background: var(--yellow); }
+.bar.red i { background: var(--red); }
+
+/* Onglets de Gestion */
+.tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); }
+.tabs button { min-height: 48px; border-radius: 2px; color: var(--muted); font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.tabs button.active { background: var(--accent); color: var(--on-accent); }
+.tabs + .hint { margin-top: -8px; }
+details.advanced > summary { cursor: pointer; font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; list-style: none; }
+details.advanced > summary::before { content: "▸ "; color: var(--muted); }
+details.advanced[open] > summary::before { content: "▾ "; }
+details.advanced[open] > .grid-2 { margin-top: 14px; }
+details.advanced .card { background: var(--bg); }
+
+/* Consommation Firebase */
+.usage.warn { border-color: var(--yellow); }
+.usage.danger { border-color: var(--red); }
+.usage-row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 12px; }
+.usage-row span { color: var(--muted); font-size: 14px; font-weight: 600; }
+.usage-row strong { font-family: var(--display); font-size: 24px; }
+.usage-row small { color: var(--muted); font-size: 15px; }
+.usage-row .bar { grid-column: 1 / -1; }
 
 /* Gestion */
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }

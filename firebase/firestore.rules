@@ -59,6 +59,18 @@ service cloud.firestore {
           && request.resource.data.at == request.time;
       }
 
+      // ---------- Consommation Firebase estimée, publiée par chaque appareil ----------
+      match /usage/{uid} {
+        allow read: if isManager();
+        allow write: if isActive() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['day', 'reads', 'writes', 'deletes', 'at'])
+          && request.resource.data.day is string && request.resource.data.day.size() == 10
+          && request.resource.data.reads is int && request.resource.data.reads >= 0
+          && request.resource.data.writes is int && request.resource.data.writes >= 0
+          && request.resource.data.deletes is int && request.resource.data.deletes >= 0
+          && request.resource.data.at == request.time;
+      }
+
       // ---------- Configuration privée (jamais le Viewer) ----------
       function validConfig(d) {
         return d.priceMode in ['auto', 'locked']

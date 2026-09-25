@@ -8,6 +8,7 @@ const LINKS = [
   { to: '/tableau', label: 'Tableau' },
   { to: '/porte', label: 'Porte' },
   { to: '/gestion', label: 'Gestion' },
+  { to: '/journal', label: 'Journal' },
 ];
 
 export default function Nav() {

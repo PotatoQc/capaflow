@@ -3,6 +3,7 @@ import Nav from './Nav';
 import Vitrine from './Vitrine';
 import { useApp } from '../data/AppContext';
 import { TICKETS } from '../data/event';
+import { WARN, worstRatio } from '../data/usage';
 
 type TileProps = { label: string; value: string | number; suffix?: string; ratio?: number; tone?: 'yellow' | 'red' };
 
@@ -48,6 +49,9 @@ export default function Tableau() {
         {s.salesState === 'SUSPENDU' && <div className="banner red">SUSPENDU — scans Hi.Events non mis à jour ({Number.isFinite(age) ? `depuis ${age} s` : 'aucune donnée reçue'})</div>}
         {!s.salesOpen && <div className="banner grey">FERMÉ — ventes fermées</div>}
         {s.forceSales && <div className="banner accent">FORÇAGE ACTIF — ventes permises malgré des scans périmés</div>}
+        {s.usage && worstRatio(s.usage) >= WARN && (
+          <div className="banner red">FIREBASE : {Math.round(worstRatio(s.usage) * 100)} % de la limite du jour utilisé — voir Gestion › Soirée</div>
+        )}
       </div>
 
       <section className={`hero hero-${l}`}>

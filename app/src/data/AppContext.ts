@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { Usage } from './usage';
 import type { EngineOutput, Params, Pricing } from '../engine/computeState';
 import type { AccountRole, Role } from './event';
 
@@ -50,6 +51,8 @@ export type AppState = EngineOutput & {
   online: boolean;
   pending: number;
   lastRejectAt: number | null;
+  // Consommation Firebase estimée du jour (Manager et Admin seulement).
+  usage: Usage | null;
   doorStudent: number;
   doorOther: number;
   params: Params;

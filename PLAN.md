@@ -139,6 +139,10 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 
 ### 6.3 Gestion (`#/gestion`)
 
+Organisée en **onglets par moment d'usage** : **Soirée** (ouvert par défaut : capacité et ventes, prix à la porte, ajustement du compte, consommation Firebase) · **Réglages** (avant la soirée : paiement Square, liens de check-in, et « Réglages avancés » repliés : paramètres du moteur et calcul de la suggestion) · **Admin** (Admin seulement : comptes, remise à zéro). Le journal est une page à part (§6.4).
+
+- **Consommation Firebase** (onglet Soirée, Manager et Admin) : lectures / 50 000, écritures / 20 000, suppressions / 20 000 pour le jour de quota (remise à zéro à minuit heure du Pacifique = 03:00 à Montréal). **Estimation** : chaque appareil compte les documents reçus du serveur et ses écritures, et publie ses totaux dans `usage/{uid}` toutes les 2 min (si changés) ; Gestion additionne les appareils du jour + 1 écriture par scan Hi.Events (webhook). Carte jaune dès 70 %, rouge dès 90 %, avec conseil ; bandeau rouge sur le Tableau (Manager, Admin) dès 70 %. Chiffres exacts : console Firebase › Firestore › Utilisation.
+
 - Capacité (1 à 300, enregistrée avec Entrée, en quittant le champ ou avec −5/+5) · Ventes ouvertes/fermées · Forcer les ventes malgré des scans périmés.
 - **Confirmation obligatoire** avant : fermer les ventes, activer le forçage, monter la capacité au-delà de 255.
 - Paramètres : r₀ de départ étudiant et régulier, courbe F(t) de départ (croissante, 100 % à la dernière heure), q de départ. Encadré « Ajusté automatiquement » : retard détecté δ, r̂ étudiant et régulier, q̂, et colonne F ajustée (lecture seule).
@@ -149,10 +153,13 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - **Liens de check-in** (Admin) : deux champs (étudiant, régulier), acceptés seulement au format `https://app.hi.events/check-in/cil_…` (option `#scan`). Jamais écrits dans le code.
 - Ajustement ±n avec motif : choix « + Ajouter » / « − Retirer », nombre saisi au clavier (1 à 50) et boutons − / +.
 - Chaque section de Gestion commence par une courte description d'aide pour la soirée.
-- Journal : 50 dernières entrées en direct, bouton Annuler (Manager, Admin).
 - Comptes (Admin) : créer (identifiant, nom, rôle, mot de passe), changer le rôle, désactiver.
 - **Remise à zéro (tests)** (Admin) : après confirmation, efface le journal et remet à 0 tous les compteurs (`shards`) et revenus (`money`). Capacité, prix, paramètres, liens et comptes sont conservés ; les scans Hi.Events ne sont pas touchés (annuler les check-ins de test dans Hi.Events). Bouton désactivé dès l'ouverture des portes, et refusé par les règles après `doorsOpen`.
 - « Initialiser l'événement » (Admin, visible seulement si `/events/neon-party` n'existe pas) : écrit les valeurs par défaut du §7.
+
+### 6.4 Journal (`#/journal`)
+
+Page à part dans le menu du haut (Manager, Admin) : 50 dernières entrées en direct, bouton Annuler ; « Aucune action pour l'instant » si vide.
 
 ## 7. Données Firestore
 
@@ -187,6 +194,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 /events/neon-party/money/{uid}       revenus par utilisateur, illisibles pour Bouncer et Viewer
   revenue : number · lastOp : string
 
+/events/neon-party/usage/{uid}       consommation Firebase estimée par appareil : day (AAAA-MM-JJ, heure du Pacifique), reads, writes, deletes, at
 /events/neon-party/log/{opId}        journal immuable
   type: "staff" | "sale" | "exit" | "reentry" | "adjust" | "void"
   uid · at (heure serveur) · clientAt (heure de l'appareil)
@@ -219,6 +227,7 @@ Courbe d'arrivée par défaut (F = part cumulée des arrivées des détenteurs d
 ## 8. Règles de sécurité (exigences)
 
 - Tout est refusé par défaut. « Actif » = rôle admin, manager, bouncer ou viewer, lu dans `/users/{uid}`.
+- `usage/{uid}` : lecture par Manager et Admin ; écriture par le propriétaire (tout compte actif), champs `day` (10 caractères), `reads`/`writes`/`deletes` entiers ≥ 0 et `at == request.time`.
 - `users` : chacun lit son propre document ; Manager et Admin lisent les autres ; seul l'Admin écrit.
 - `events/neon-party` : lecture par tout compte actif ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `capacity` (entier de 1 à 300), `salesOpen` et `forceSales` ; suppression interdite.
 - `private/config` : lecture par Admin, Manager et Bouncer (**pas le Viewer**) ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `priceMode`, `doorPrices` (deux entiers de 1 à 100), `params`, `pricing` et `square` (`enabled` booléen, `appId` vide ou conforme à `^sq0id[a-z]-[A-Za-z0-9_-]{10,}$`) ; `checkinLinks` modifiable par l'Admin seulement, chaque valeur vide ou conforme à `^https://app\.hi\.events/check-in/cil_[A-Za-z0-9]+(#scan)?$`.
@@ -358,6 +367,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Gestion en onglets (Soirée / Réglages / Admin, réglages avancés repliés) ; Journal sur une page à part ; carte « Firebase · consommation du jour » (estimation par appareil, alertes 70 % / 90 %) |
 | 2026-09-24 | Correctif mise à jour : le service worker prend le contrôle tout de suite (skipWaiting + clientsClaim) ; avant, une nouvelle version attendait la fermeture de tous les onglets |
 | 2026-09-24 | Tests de validation : les zones de l’écran Porte rétrécissent quand des bandeaux s’empilent (plus de débordement sous les check-ins) ; bandeau de retour Square effacé après 10 s |
 | 2026-09-24 | Tests de validation : retour Square rouvert = « déjà enregistré » (identifiants de transaction mémorisés, rien n’est recompté) ; bouton « Déconnexion » (avec confirmation) pour le Bouncer sur l’écran Porte ; compte à rebours d’annulation exact après un retour Square |
