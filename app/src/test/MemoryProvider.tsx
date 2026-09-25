@@ -63,7 +63,7 @@ export function MemoryProvider({ role = 'manager', children }: { role?: Role; ch
     role,
     state: {
       ...out, priceMode, checkinLinks, square, capacity, clock: clock(NOW), scanned: SCANNED, revenue, staff: totals.staff, scanAgeS: 12,
-      salesOpen, forceSales, online: true, pending: 0, doorStudent: applied.student, doorOther: applied.other, params, pricing,
+      salesOpen, forceSales, online: true, pending: 0, lastRejectAt: null, doorStudent: applied.student, doorOther: applied.other, params, pricing,
     },
     log,
     accounts,

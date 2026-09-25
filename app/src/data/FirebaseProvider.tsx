@@ -81,6 +81,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [logDocs, setLogDocs] = useState<Map<string, LogDoc>>(new Map());
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [pending, setPending] = useState(0);
+  const [lastRejectAt, setLastRejectAt] = useState<number | null>(null);
   const [pushed, setPushed] = useState<{ student: number; regular: number; at: number } | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [now, setNow] = useState(() => Date.now());
@@ -151,9 +152,10 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   }, [role, isDoor, isManager]);
 
   // Compteur et revenus de l'utilisateur créés à zéro au besoin (PLAN §7).
+  const hasEvent = !!eventData;
   useEffect(() => {
-    if (uid && isDoor && eventData) ensureCounters(db, uid).catch(report);
-  }, [uid, isDoor, eventData]);
+    if (uid && isDoor && hasEvent) ensureCounters(db, uid).catch(report);
+  }, [uid, isDoor, hasEvent]);
 
   if (user === undefined || (user && profile === undefined)) return <Splash />;
   if (!user) {
@@ -206,7 +208,10 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
 
   const commit = (p: Promise<void>) => {
     setPending((n) => n + 1);
-    p.catch(report).finally(() => setPending((n) => n - 1));
+    p.catch((e) => {
+      report(e);
+      setLastRejectAt(Date.now());
+    }).finally(() => setPending((n) => n - 1));
   };
   const updateEvent = (data: Partial<EventDoc>) => commit(updateDoc(eventDoc(db), data));
   const updateConfig = (data: Partial<ConfigDoc>) => commit(updateDoc(configDoc(db), data));
@@ -248,6 +253,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       forceSales: eventData.forceSales,
       online,
       pending,
+      lastRejectAt,
       doorStudent: applied.student,
       doorOther: applied.other,
       params,

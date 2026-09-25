@@ -8,6 +8,7 @@ import { APP_ID, isAndroid, readReturn, savePending, squareUrl, takePending } fr
 
 const UNDO_MS = 30_000;
 const PRICE_NOTICE_MS = 10_000;
+const REJECT_SHOW_MS = 20_000;
 const MAX_PER_SALE = 10;
 const CHECKINS = [
   { key: 'student', label: 'Check-in étudiant' },
@@ -159,6 +160,10 @@ export default function Porte() {
         <button className={`square-msg ${squareMsg.ok ? 'ok' : 'ko'}`} onClick={() => setSquareMsg(null)}>
           {squareMsg.text}
         </button>
+      )}
+
+      {state.lastRejectAt !== null && now - state.lastRejectAt < REJECT_SHOW_MS && (
+        <p className="capacity-alert">ACTION REFUSÉE PAR LE SERVEUR : refaites-la ou prévenez un Manager</p>
       )}
 
       {state.scanAgeS > 30 && state.scanAgeS <= 60 && <p className="scan-warn">⚠ scans il y a {state.scanAgeS} s</p>}

@@ -8,7 +8,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  EVENT_ID, ZERO_SHARD, buildOp, configDoc, eventDoc, logDoc, moneyDoc, shardDoc, type Op,
+  EVENT_ID, ZERO_SHARD, buildOp, configDoc, ensureCounters, eventDoc, logDoc, moneyDoc, shardDoc, type Op,
 } from './ops';
 
 let env: RulesTestEnvironment;
@@ -56,6 +56,19 @@ const read = async (path: string[]) => {
   return data!;
 };
 const shard = (uid: string) => read(['events', EVENT_ID, 'shards', uid]);
+
+describe('Compteurs du Bouncer', () => {
+  it('ensureCounters crée les revenus d’un Bouncer (qui ne peut pas les lire), puis ne les écrase jamais', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await deleteDoc(moneyDoc(ctx.firestore() as unknown as Firestore, 'b1'));
+    });
+    await ensureCounters(db('b1'), 'b1');
+    expect((await read(['events', EVENT_ID, 'money', 'b1'])).revenue).toBe(0);
+    await assertSucceeds(buildOp(db('b1'), 'b1', SALE, 'op-s').batch.commit());
+    await ensureCounters(db('b1'), 'b1');
+    expect((await read(['events', EVENT_ID, 'money', 'b1'])).revenue).toBe(39);
+  });
+});
 
 describe('Comptes : lecture limitée', () => {
   it('Viewer et Bouncer lisent seulement leur propre compte ; le Manager lit tous les comptes', async () => {

@@ -31,7 +31,10 @@ export const logDoc = (db: Firestore, id: string) => doc(db, 'events', EVENT_ID,
 // Crée à zéro le compteur et les revenus de l'utilisateur s'ils n'existent pas (PLAN §7).
 export async function ensureCounters(db: Firestore, uid: string) {
   if (!(await getDoc(shardDoc(db, uid))).exists()) await setDoc(shardDoc(db, uid), ZERO_SHARD);
-  if (!(await getDoc(moneyDoc(db, uid))).exists()) await setDoc(moneyDoc(db, uid), { revenue: 0, lastOp: '' });
+  // Un Bouncer ne peut pas lire ses revenus : on tente la création à l'aveugle.
+  // S'ils existent déjà, les règles refusent l'écriture (création à 0 seulement) et rien ne change.
+  const money = await getDoc(moneyDoc(db, uid)).then((s) => s.exists(), () => false);
+  if (!money) await setDoc(moneyDoc(db, uid), { revenue: 0, lastOp: '' }).catch(() => undefined);
 }
 
 function counterIncrements(op: Op, s: 1 | -1): Record<string, ReturnType<typeof increment>> {

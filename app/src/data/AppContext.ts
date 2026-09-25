@@ -49,6 +49,7 @@ export type AppState = EngineOutput & {
   forceSales: boolean;
   online: boolean;
   pending: number;
+  lastRejectAt: number | null;
   doorStudent: number;
   doorOther: number;
   params: Params;
