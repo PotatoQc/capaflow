@@ -1,12 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Brand } from './Brand';
 
 // Écrans affichés avant que l'app soit prête (chargement, compte bloqué, événement à initialiser).
 
+const STUCK_MS = 10_000;
+
 export function Splash() {
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setStuck(true), STUCK_MS);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <main className="login">
-      <Brand large />
+      <div className="login-card">
+        <Brand large />
+        {stuck && (
+          <>
+            <p className="muted">Le chargement est bloqué. Fermez les autres onglets de ce site, puis rechargez.</p>
+            <button className="btn btn-primary btn-lg" onClick={() => window.location.reload()}>Recharger</button>
+          </>
+        )}
+      </div>
     </main>
   );
 }

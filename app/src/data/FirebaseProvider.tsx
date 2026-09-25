@@ -73,6 +73,7 @@ function toOp(d: LogDoc): Op | undefined {
 export function FirebaseProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [profile, setProfile] = useState<{ role: AccountRole; username: string } | null | undefined>(undefined);
+  const [profileTry, setProfileTry] = useState(0);
   const [eventData, setEventData] = useState<EventDoc | null | undefined>(undefined);
   const [config, setConfig] = useState<ConfigDoc | null | undefined>(undefined);
   const [shards, setShards] = useState<Totals[]>([]);
@@ -111,8 +112,19 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       setProfile(user === null ? null : undefined);
       return;
     }
-    return onSnapshot(doc(db, 'users', uid), (s) => setProfile(s.exists() ? (s.data() as { role: AccountRole; username: string }) : null), () => setProfile(null));
-  }, [uid, user]);
+    // Juste après la connexion, la lecture peut être refusée le temps que le jeton arrive : on réessaie
+    // au lieu d'afficher « compte désactivé ».
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const unsub = onSnapshot(
+      doc(db, 'users', uid),
+      (s) => setProfile(s.exists() ? (s.data() as { role: AccountRole; username: string }) : null),
+      () => { retry = setTimeout(() => setProfileTry((n) => n + 1), 1000); },
+    );
+    return () => {
+      unsub();
+      clearTimeout(retry);
+    };
+  }, [uid, user, profileTry]);
 
   useEffect(() => {
     if (!role) return;

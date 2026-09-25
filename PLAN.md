@@ -33,7 +33,7 @@
 | Couche | Choix |
 |---|---|
 | Frontend | React + Vite + TypeScript, **page web sans installation** : cache hors ligne par service worker (`vite-plugin-pwa`, sans manifeste ni icônes d'installation), React Router en **HashRouter**, `base: '/'`, domaine **porte.southevents.ca** |
-| Données | Firebase JS SDK modulaire : Auth (courriel + mot de passe) ; Firestore avec `persistentLocalCache` + `persistentMultipleTabManager`, région `northamerica-northeast1` (Montréal) |
+| Données | Firebase JS SDK modulaire : Auth (courriel + mot de passe) ; Firestore avec `persistentLocalCache` + `persistentSingleTabManager({ forceOwnership: true })` (le dernier onglet ouvert prend le cache ; un onglet gelé ne bloque plus), région `northamerica-northeast1` (Montréal) |
 | Hi.Events | Cloudflare Worker en TypeScript (Wrangler), nom `capaflow-hievents` |
 | Tests | Vitest (moteur, intégration) ; `@testing-library/react` + jsdom (parcours d'écran) ; `@firebase/rules-unit-testing` + Firebase Emulator (règles) |
 | CI/CD | GitHub Actions → GitHub Pages (`actions/deploy-pages`) |
@@ -358,6 +358,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Correctifs : écran de chargement figé après le retour de Square (cache à un seul onglet, le plus récent gagne ; bouton « Recharger » après 10 s) ; « compte désactivé » à la première connexion (lecture du compte réessayée) |
 | 2026-09-24 | Paiement Square intégré (Point of Sale API web mobile), désactivable dans Gestion ; vente enregistrée seulement si paiement réussi |
 | 2026-09-24 | Bouton Admin « Remise à zéro (tests) » : journal, compteurs et revenus ; bloqué par les règles dès l'ouverture des portes |
 | 2026-09-24 | Vitrine Viewer : modèle « Enseigne » (V2) retenu, remplace le néon festif |
