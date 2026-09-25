@@ -5,6 +5,7 @@ import { TYPE_LABEL, useApp, type Account } from '../data/AppContext';
 import { arrivalFraction } from '../engine/computeState';
 import { CURVE_HOURS, DEFAULT_CAPACITY, DOORS_OPEN, ROLE_LABEL, clock, localTimeToUtc, type AccountRole, type Role } from '../data/event';
 import ConfirmDialog from './ConfirmDialog';
+import { APP_ID } from '../square/square';
 
 type Confirm = { title: string; message: string; label: string; onConfirm: () => void; onCancel?: () => void };
 
@@ -24,7 +25,7 @@ const stepDelta = (d: number, by: number) => {
 export default function Gestion() {
   const {
     role, state, log, setCapacity, setSalesOpen, setForceSales, lockDoorPrices, setPriceMode, setCheckinLinks, setParams,
-    setPricing, record, voidEntry, accounts, createAccount: addAccount, setAccountRole, resetCounts,
+    setPricing, record, voidEntry, accounts, createAccount: addAccount, setAccountRole, resetCounts, setSquare,
   } = useApp();
   const [linksDraft, setLinksDraft] = useState(state.checkinLinks);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -43,6 +44,7 @@ export default function Gestion() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
   const [resetError, setResetError] = useState('');
+  const [squareId, setSquareId] = useState(state.square.appId);
 
   if (role === 'bouncer') return <Navigate to="/porte" replace />;
   if (role === 'viewer') return <Navigate to="/tableau" replace />;
@@ -436,6 +438,35 @@ export default function Gestion() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="card wide">
+          <h2>Paiement Square</h2>
+          <p className="desc">
+            Activé : « Vente » ouvre l'app Square avec le montant, et la vente n'est comptée que si le paiement réussit.
+            Désactivé : on revient à la méthode actuelle (payer dans Square, puis confirmer la vente ici). Chaque
+            téléphone doit avoir l'app Square Point of Sale installée et connectée.
+          </p>
+          <label className="switch-row">
+            Payer avec Square depuis l'app
+            <input type="checkbox" className="switch" checked={state.square.enabled} disabled={!APP_ID.test(state.square.appId)}
+              onChange={(e) => setSquare({ enabled: e.target.checked, appId: state.square.appId })} />
+          </label>
+          <div className="row">
+            <label className="field">
+              <span>Application ID Square</span>
+              <input value={squareId} placeholder="sq0idp-…" autoCapitalize="none" onChange={(e) => setSquareId(e.target.value.trim())} />
+            </label>
+          </div>
+          {squareId !== '' && !APP_ID.test(squareId) && <p className="error">Format attendu : sq0idp-… (Developer Dashboard de Square).</p>}
+          <p className="hint">Adresse de retour à enregistrer dans Square (Point of Sale API › Web) : {window.location.origin}/</p>
+          <div className="card-actions">
+            <button className="btn btn-primary" disabled={squareId !== '' && !APP_ID.test(squareId)}
+              onClick={() => { setSquare({ enabled: state.square.enabled && squareId !== '', appId: squareId }); save('square'); }}>
+              Enregistrer l'ID
+            </button>
+            {saved === 'square' && <span className="saved">✓ Enregistré</span>}
           </div>
         </section>
 

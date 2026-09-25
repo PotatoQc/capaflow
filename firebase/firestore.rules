@@ -64,16 +64,21 @@ service cloud.firestore {
         return d.priceMode in ['auto', 'locked']
           && validPrice(d.doorPrices.student) && validPrice(d.doorPrices.other)
           && validLink(d.checkinLinks.student) && validLink(d.checkinLinks.regular)
-          && d.params is map && d.pricing is map;
+          && d.params is map && d.pricing is map
+          && (!('square' in d) || validSquare(d.square));
+      }
+      function validSquare(s) {
+        return s.keys().hasOnly(['enabled', 'appId']) && s.enabled is bool && s.appId is string
+          && (s.appId == '' || s.appId.matches('^sq0id[a-z]-[A-Za-z0-9_-]{10,}$'));
       }
       match /private/{doc} {
         allow read: if isDoor();
         allow create: if isAdmin() && doc == 'config' && validConfig(request.resource.data);
         allow update: if doc == 'config' && validConfig(request.resource.data) && (
           (isManager() && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['priceMode', 'doorPrices', 'params', 'pricing']))
+              .hasOnly(['priceMode', 'doorPrices', 'params', 'pricing', 'square']))
           || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['priceMode', 'doorPrices', 'params', 'pricing', 'checkinLinks'])));
+              .hasOnly(['priceMode', 'doorPrices', 'params', 'pricing', 'checkinLinks', 'square'])));
         allow delete: if false;
       }
 

@@ -117,6 +117,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - **Carte étudiante** : « Check-in étudiant » ouvre d'abord un rappel « Demandez la carte étudiante AVANT de scanner le billet » avec « Carte vérifiée : ouvrir le check-in ↗ » ou « Pas de carte étudiante ». Sans carte : si les ventes sont ouvertes (V ≥ 1), « Ne pas scanner son billet étudiant » + bouton « Vendre 1 billet Autre · X $ » (vente pré-remplie) ; sinon « REFUSER L'ENTRÉE » avec la raison.
 - **Staff** : compteur « − Staff N + » : « + » à l'arrivée d'un membre du staff, « − » quand il quitte pour de bon (grisé à 0). Ses sorties et réentrées temporaires passent par les boutons normaux.
 - **Vente** : feuille avec deux cartes, Étudiant et Autre, chacune avec son **prix appliqué** (automatique ou figé, §6.3, **figé à l'ouverture de la feuille**) et un compteur − / + (0 au départ). Total des billets ≤ min(10, V au moment de l'ouverture) ; « + » grisé au plafond. Bouton « Confirmer N billet(s) · X $ » (grisé si N = 0) → **une seule opération** `sale` pour tout le groupe, donc « Annuler dernier » annule le groupe entier.
+- **Paiement Square** (si activé dans Gestion) : le bouton devient « Payer avec Square · X $ ». L'app garde la vente en attente dans le téléphone et ouvre l'app Square Point of Sale avec le montant en CAD (Point of Sale API web mobile : `square-commerce-v1://` sur iPhone, intent Android). Au retour sur `https://porte.southevents.ca/`, la vente est enregistrée **seulement si Square indique un paiement réussi**, avec un bandeau vert ; annulé ou refusé : bandeau rouge, aucune vente. Vente en attente valable 15 min, lue une seule fois. Bouton secondaire « Payé sans Square (enregistrer) » = méthode actuelle. Désactivé : bouton « Confirmer » habituel.
 - **Billets disponibles** : sous les prix du bouton Vente, « V billet(s) disponible(s) », mis à jour en direct.
 - **Nouveau prix** : quand les prix appliqués changent, bandeau blanc clignotant « NOUVEAU PRIX : X $ · Y $ » pendant 10 s (si les ventes sont ouvertes).
 - État du bouton Vente, par ordre de priorité : `FERMÉ` (ventes fermées) › `SUSPENDU` (scans vieux de plus de 60 s, sans forçage) › `COMPLET` (V ≤ 0) › ouvert.
@@ -144,6 +145,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
 - **Prix à la porte** : choix « Automatique » (défaut : prix appliqués = prix suggérés du §9.10, sans action) / « Figé » (prix fixes). Saisie des prix Étudiant et Autre (1 à 100 $) + bouton « Figer ces prix ». Retour à l'automatique en un clic. Les écrans Porte reçoivent chaque changement.
 - Calcul de la suggestion : bases (1 à 100 $), paliers (V minimum distincts, multiplicateurs de 0,05 à 5), règle horaire (multiplicateur de 0,05 à 2). Refusé si un prix suggéré pouvait sortir de 1 à 100 $.
 - Comptes : le dernier Admin ne peut être ni modifié ni désactivé.
+- **Paiement Square** (Manager, Admin) : interrupteur « Payer avec Square depuis l'app » (désactivable à tout moment pour revenir à la méthode actuelle) et Application ID Square (`sq0idp-…`). L'adresse de retour à enregistrer dans le Developer Dashboard de Square est affichée.
 - **Liens de check-in** (Admin) : deux champs (étudiant, régulier), acceptés seulement au format `https://app.hi.events/check-in/cil_…` (option `#scan`). Jamais écrits dans le code.
 - Ajustement ±n avec motif : choix « + Ajouter » / « − Retirer », nombre saisi au clavier (1 à 50) et boutons − / +.
 - Chaque section de Gestion commence par une courte description d'aide pour la soirée.
@@ -169,6 +171,7 @@ Nom affiché : **SouthEvents Porte** (logo SouthEvents : complet sur la connexio
   priceMode: "auto" | "locked"        ← "auto" par défaut
   doorPrices: { student: 5, other: 15 } ← utilisés seulement en mode "locked"
   checkinLinks: { student: string, regular: string }  ← liens des pages de check-in Hi.Events ("" = non configuré)
+  square: { enabled: bool, appId: string }  ← paiement Square (facultatif ; appId "" ou sq0id?-…)
   params:  { r0: { student: 0.75, regular: 0.95 }, q: 0.7, arrivalCurve: [ { t, f }, … ] }
   pricing: { base: { student: 5, other: 15 },
              tiers: [ { min: 30, mult: 1 }, { min: 15, mult: 1.25 }, { min: 5, mult: 1.5 }, { min: 1, mult: 2 } ],
@@ -218,7 +221,7 @@ Courbe d'arrivée par défaut (F = part cumulée des arrivées des détenteurs d
 - Tout est refusé par défaut. « Actif » = rôle admin, manager, bouncer ou viewer, lu dans `/users/{uid}`.
 - `users` : chacun lit son propre document ; tout compte actif lit les autres ; seul l'Admin écrit.
 - `events/neon-party` : lecture par tout compte actif ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `capacity` (entier de 1 à 300), `salesOpen` et `forceSales` ; suppression interdite.
-- `private/config` : lecture par Admin, Manager et Bouncer (**pas le Viewer**) ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `priceMode`, `doorPrices` (deux entiers de 1 à 100), `params` et `pricing` ; `checkinLinks` modifiable par l'Admin seulement, chaque valeur vide ou conforme à `^https://app\.hi\.events/check-in/cil_[A-Za-z0-9]+(#scan)?$`.
+- `private/config` : lecture par Admin, Manager et Bouncer (**pas le Viewer**) ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `priceMode`, `doorPrices` (deux entiers de 1 à 100), `params`, `pricing` et `square` (`enabled` booléen, `appId` vide ou conforme à `^sq0id[a-z]-[A-Za-z0-9_-]{10,}$`) ; `checkinLinks` modifiable par l'Admin seulement, chaque valeur vide ou conforme à `^https://app\.hi\.events/check-in/cil_[A-Za-z0-9]+(#scan)?$`.
 - `scans/totals` : lecture par tout compte actif ; écriture seulement par le compte technique de rôle `worker` (champs `student`, `regular` entiers ≥ 0 et `at == request.time`). Ce rôle ne peut rien lire ni écrire d'autre.
 - `money/{uid}` : lecture par Manager et Admin seulement. Création par le propriétaire à 0. Mise à jour par le propriétaire, dans le même lot qu'un `log` de vente ou d'annulation de vente (`getAfter`), avec une variation égale au montant du log (Σ qty × prices). Exception : l'Admin peut le remettre à `{revenue: 0, lastOp: ''}` avant `doorsOpen` (remise à zéro de test).
 - `shards/{uid}` : lecture par tout compte actif. Création par le propriétaire (Admin, Manager ou Bouncer) avec tous les compteurs à 0. Mise à jour par le propriétaire seulement, et seulement si `log/{lastOp}` n'existait pas avant le lot et existe après (`getAfter`), avec des variations qui correspondent exactement au type (tableau du §7). Exception : l'Admin peut le remettre entièrement à 0 avant `doorsOpen` (remise à zéro de test). Suppression interdite.
@@ -355,6 +358,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Paiement Square intégré (Point of Sale API web mobile), désactivable dans Gestion ; vente enregistrée seulement si paiement réussi |
 | 2026-09-24 | Bouton Admin « Remise à zéro (tests) » : journal, compteurs et revenus ; bloqué par les règles dès l'ouverture des portes |
 | 2026-09-24 | Vitrine Viewer : modèle « Enseigne » (V2) retenu, remplace le néon festif |
 | 2026-09-24 | « − Staff » (opération `staffOut`, staff −1, règles mises à jour) ; égaliseur retiré de la vitrine Viewer |

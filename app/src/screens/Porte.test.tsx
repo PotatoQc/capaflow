@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useApp } from '../data/AppContext';
+import { savePending } from '../square/square';
 import { MemoryProvider } from '../test/MemoryProvider';
 import Porte from './Porte';
 
@@ -11,9 +12,10 @@ const STUDENT_LINK = 'https://app.hi.events/check-in/cil_test123#scan';
 const REGULAR_LINK = 'https://app.hi.events/check-in/cil_test456#scan';
 
 function LockPrices() {
-  const { lockDoorPrices, setCheckinLinks, setCapacity } = useApp();
+  const { lockDoorPrices, setCheckinLinks, setCapacity, setSquare } = useApp();
   return (
     <>
+      <button onClick={() => setSquare({ enabled: true, appId: 'sq0idp-AbCdEfGhIjKlMn' })}>square-test</button>
       <button onClick={() => lockDoorPrices(10, 30)}>figer-test</button>
       <button onClick={() => setCheckinLinks({ student: STUDENT_LINK, regular: '' })}>liens-test</button>
       <button onClick={() => setCheckinLinks({ student: STUDENT_LINK, regular: REGULAR_LINK })}>liens2-test</button>
@@ -56,6 +58,33 @@ describe('Écran Porte (scénario 23:00, 195 personnes, prix automatiques 8 $ / 
     expect(screen.getByLabelText('Billets Étudiant').textContent).toBe('8');
     expect(add.disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Confirmer 8 billets · 64 $' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('Square activé : « Payer avec Square » + « Payé sans Square »', () => {
+    renderPorte();
+    fireEvent.click(screen.getByText('square-test'));
+    fireEvent.click(screen.getByRole('button', { name: /VENTE/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter un billet Autre' }));
+    expect(screen.getByRole('button', { name: 'Payer avec Square · 23 $' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Payé sans Square (enregistrer)' }));
+    expect(screen.getByText('196')).toBeTruthy();
+  });
+
+  it('retour de Square réussi : la vente en attente est enregistrée une seule fois', () => {
+    savePending({ student: 1, other: 1, priceStudent: 8, priceOther: 23 });
+    window.history.replaceState(null, '', '/?com.squareup.pos.SERVER_TRANSACTION_ID=t1');
+    renderPorte();
+    expect(screen.getByText('197')).toBeTruthy();
+    expect(screen.getByText(/Paiement Square réussi · 31 \$/)).toBeTruthy();
+    expect(window.location.search).toBe('');
+  });
+
+  it('retour de Square annulé : aucune vente', () => {
+    savePending({ student: 0, other: 1, priceStudent: 8, priceOther: 23 });
+    window.history.replaceState(null, '', '/?com.squareup.pos.ERROR_CODE=com.squareup.pos.ERROR_TRANSACTION_CANCELED');
+    renderPorte();
+    expect(screen.getByText('195')).toBeTruthy();
+    expect(screen.getByText(/aucune vente enregistrée/)).toBeTruthy();
   });
 
   it('le bouton Vente affiche les billets encore disponibles (V = 8)', () => {

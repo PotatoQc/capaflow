@@ -4,6 +4,7 @@ import { saleTotal, useApp, type OpType, type Sale } from '../data/AppContext';
 import { bornOnOrBefore } from '../data/event';
 import type { SalesState } from '../engine/computeState';
 import { useWakeLock } from './useWakeLock';
+import { APP_ID, isAndroid, readReturn, savePending, squareUrl, takePending } from '../square/square';
 
 const UNDO_MS = 30_000;
 const PRICE_NOTICE_MS = 10_000;
@@ -35,6 +36,25 @@ export default function Porte() {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   // Rappel « carte étudiante » avant le check-in étudiant (PLAN §6.1).
   const [cardCheck, setCardCheck] = useState<'ask' | 'nocard' | null>(null);
+  const [squareMsg, setSquareMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Retour de l'app Square : la vente en attente n'est enregistrée que si le paiement a réussi (PLAN §6.1).
+  useEffect(() => {
+    const ret = readReturn(window.location.search);
+    if (!ret || role === 'viewer') return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    const sale = takePending();
+    if (ret.ok && sale) {
+      const id = record('sale', { sale });
+      setLast({ id, at: Date.now() });
+      setSquareMsg({ ok: true, text: `Paiement Square réussi · ${saleTotal(sale)} $ · vente enregistrée` });
+    } else if (ret.ok) {
+      setSquareMsg({ ok: false, text: 'Paiement Square reçu, mais la vente est introuvable : enregistrez-la avec « Payé sans Square ».' });
+    } else {
+      setSquareMsg({ ok: false, text: `Paiement Square non complété (${ret.error}) : aucune vente enregistrée.` });
+    }
+    // Une seule lecture à l'ouverture de l'écran.
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -88,6 +108,16 @@ export default function Porte() {
   };
 
   const count = sheet ? sheet.student + sheet.other : 0;
+  const squareOn = state.square.enabled && APP_ID.test(state.square.appId);
+
+  const paySquare = () => {
+    if (!sheet || count === 0) return;
+    const { student, other, priceStudent, priceOther } = sheet;
+    const sale = { student, other, priceStudent, priceOther };
+    savePending(sale);
+    setSheet(null);
+    window.location.href = squareUrl(state.square.appId, sale, isAndroid());
+  };
 
   const step = (key: 'student' | 'other', by: 1 | -1) =>
     setSheet((s) => (s && (by < 0 ? s[key] > 0 : s.student + s.other < s.max) ? { ...s, [key]: s[key] + by } : s));
@@ -123,6 +153,12 @@ export default function Porte() {
 
       {priceNotice && sales === 'OUVERT' && (
         <p className="price-notice">{`NOUVEAU PRIX : ${state.doorStudent} $ · ${state.doorOther} $`}</p>
+      )}
+
+      {squareMsg && (
+        <button className={`square-msg ${squareMsg.ok ? 'ok' : 'ko'}`} onClick={() => setSquareMsg(null)}>
+          {squareMsg.text}
+        </button>
       )}
 
       {state.scanAgeS > 30 && state.scanAgeS <= 60 && <p className="scan-warn">⚠ scans il y a {state.scanAgeS} s</p>}
@@ -196,9 +232,18 @@ export default function Porte() {
               ))}
             </div>
             <p className="hint">Maximum {sheet.max} billet{sheet.max > 1 ? 's' : ''} pour cette vente.</p>
-            <button className="btn btn-primary btn-lg" disabled={count === 0} onClick={confirmSale}>
-              {count > 0 ? `Confirmer ${count} billet${count > 1 ? 's' : ''} · ${saleTotal(sheet)} $` : 'Choisir des billets'}
-            </button>
+            {squareOn ? (
+              <>
+                <button className="btn btn-primary btn-lg" disabled={count === 0} onClick={paySquare}>
+                  {count > 0 ? `Payer avec Square · ${saleTotal(sheet)} $` : 'Choisir des billets'}
+                </button>
+                <button className="btn" disabled={count === 0} onClick={confirmSale}>Payé sans Square (enregistrer)</button>
+              </>
+            ) : (
+              <button className="btn btn-primary btn-lg" disabled={count === 0} onClick={confirmSale}>
+                {count > 0 ? `Confirmer ${count} billet${count > 1 ? 's' : ''} · ${saleTotal(sheet)} $` : 'Choisir des billets'}
+              </button>
+            )}
             <button className="btn btn-ghost" onClick={() => setSheet(null)}>Annuler</button>
           </div>
         </div>

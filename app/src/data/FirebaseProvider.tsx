@@ -14,7 +14,7 @@ import Connexion from '../screens/Connexion';
 import { Blocked, InitEvent, Splash } from '../screens/Gate';
 import {
   AppContext, TYPE_LABEL, saleDetail, type Account, type AppApi, type CheckinLinks, type LogEntry,
-  type PriceMode,
+  type PriceMode, type SquareConfig,
 } from './AppContext';
 import {
   DEFAULT_CAPACITY, DEFAULT_PARAMS, DEFAULT_PRICING, DOORS_OPEN, EVENT_END, TICKETS, TIMEZONE, clock, exitWeight,
@@ -34,6 +34,7 @@ type ConfigDoc = {
   priceMode: PriceMode;
   doorPrices: { student: number; other: number };
   checkinLinks: CheckinLinks;
+  square?: SquareConfig;
   params: Params;
   pricing: Pricing;
 };
@@ -224,6 +225,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       ...out,
       priceMode,
       checkinLinks: config?.checkinLinks ?? { student: '', regular: '' },
+      square: config?.square ?? { enabled: false, appId: '' },
       capacity: eventData.capacity,
       clock: clock(now),
       scanned,
@@ -265,6 +267,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     lockDoorPrices: (student, other) => updateConfig({ priceMode: 'locked', doorPrices: { student, other } }),
     setPriceMode: (m) => updateConfig({ priceMode: m }),
     setCheckinLinks: (links) => updateConfig({ checkinLinks: links }),
+    setSquare: (square) => updateConfig({ square }),
     setParams: (p) => updateConfig({ params: p }),
     setPricing: (p) => updateConfig({ pricing: p }),
     createAccount: async ({ username, name, role: newRole, password }) => {

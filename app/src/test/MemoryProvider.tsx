@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
-  AppContext, TYPE_LABEL, saleDetail, saleTotal, type Account, type AppApi, type CheckinLinks, type LogEntry, type OpType,
+  AppContext, TYPE_LABEL, saleDetail, saleTotal, type Account, type AppApi, type CheckinLinks, type SquareConfig, type LogEntry, type OpType,
   type PriceMode, type Sale,
 } from '../data/AppContext';
 import {
@@ -47,6 +47,7 @@ export function MemoryProvider({ role = 'manager', children }: { role?: Role; ch
   const [door, setDoor] = useState(DEFAULT_PRICING.base);
   const [priceMode, setPriceMode] = useState<PriceMode>('auto');
   const [checkinLinks, setCheckinLinks] = useState<CheckinLinks>({ student: '', regular: '' });
+  const [square, setSquare] = useState<SquareConfig>({ enabled: false, appId: '' });
   const [params, setParams] = useState<Params>(DEFAULT_PARAMS);
   const [pricing, setPricing] = useState<Pricing>(DEFAULT_PRICING);
   const [accounts, setAccounts] = useState<Account[]>(SEED_ACCOUNTS);
@@ -61,7 +62,7 @@ export function MemoryProvider({ role = 'manager', children }: { role?: Role; ch
   const api: AppApi = {
     role,
     state: {
-      ...out, priceMode, checkinLinks, capacity, clock: clock(NOW), scanned: SCANNED, revenue, staff: totals.staff, scanAgeS: 12,
+      ...out, priceMode, checkinLinks, square, capacity, clock: clock(NOW), scanned: SCANNED, revenue, staff: totals.staff, scanAgeS: 12,
       salesOpen, forceSales, online: true, pending: 0, doorStudent: applied.student, doorOther: applied.other, params, pricing,
     },
     log,
@@ -93,6 +94,7 @@ export function MemoryProvider({ role = 'manager', children }: { role?: Role; ch
     },
     setPriceMode,
     setCheckinLinks,
+    setSquare,
     setParams,
     setPricing,
     createAccount: async ({ username, name, role: r }) => {

@@ -57,6 +57,15 @@ const read = async (path: string[]) => {
 };
 const shard = (uid: string) => read(['events', EVENT_ID, 'shards', uid]);
 
+describe('Paiement Square (config)', () => {
+  it('Manager : active Square avec un Application ID valide ; refusé si l’ID est invalide ou pour un Bouncer', async () => {
+    const ok = { enabled: true, appId: 'sq0idp-AbCdEfGhIjKlMn' };
+    await assertSucceeds(updateDoc(configDoc(db('manager')), { square: ok }));
+    await assertFails(updateDoc(configDoc(db('manager')), { square: { enabled: true, appId: 'https://evil.example' } }));
+    await assertFails(updateDoc(configDoc(db('b1')), { square: { enabled: false, appId: '' } }));
+  });
+});
+
 describe('Remise à zéro de test', () => {
   const seedOps = async () => {
     await buildOp(db('b1'), 'b1', { type: 'staff' }, 'op-a').batch.commit();

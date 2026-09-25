@@ -8,6 +8,7 @@ export type OpType = 'staff' | 'staffOut' | 'sale' | 'exit' | 'reentry' | 'adjus
 export type Sale = { student: number; other: number; priceStudent: number; priceOther: number };
 export type PriceMode = 'auto' | 'locked';
 export type CheckinLinks = { student: string; regular: string };
+export type SquareConfig = { enabled: boolean; appId: string };
 
 export const TYPE_LABEL: Record<OpType, string> = {
   staff: 'Staff',
@@ -37,6 +38,7 @@ export type Account = { uid: string; username: string; name: string; role: Accou
 export type AppState = EngineOutput & {
   priceMode: PriceMode;
   checkinLinks: CheckinLinks;
+  square: SquareConfig;
   capacity: number;
   clock: string;
   scanned: { student: number; regular: number };
@@ -66,6 +68,7 @@ export type AppApi = {
   lockDoorPrices: (student: number, other: number) => void;
   setPriceMode: (m: PriceMode) => void;
   setCheckinLinks: (links: CheckinLinks) => void;
+  setSquare: (s: SquareConfig) => void;
   setParams: (p: Params) => void;
   setPricing: (p: Pricing) => void;
   createAccount: (a: { username: string; name: string; role: Role; password: string }) => Promise<void>;

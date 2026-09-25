@@ -108,6 +108,9 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 .card-refuse { padding: 14px; border-radius: 4px; background: var(--red); color: #fff; font-family: var(--display); font-size: 28px; font-weight: 700; text-align: center; letter-spacing: 0.04em; }
 .link-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .checkin-links small { color: var(--muted); font-family: "Barlow", system-ui, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.square-msg { padding: 12px 14px; border-radius: 4px; color: #fff; font-size: 16px; font-weight: 700; text-align: left; }
+.square-msg.ok { background: var(--green); }
+.square-msg.ko { background: var(--red); }
 .scan-warn { color: var(--yellow); font-size: 15px; font-weight: 700; }
 .zones {
   flex: 1; min-height: 0; display: grid; gap: 8px;
