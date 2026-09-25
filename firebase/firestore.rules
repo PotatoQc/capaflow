@@ -25,7 +25,7 @@ service cloud.firestore {
 
     // ---------- Comptes ----------
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isActive());
+      allow read: if signedIn() && (request.auth.uid == uid || isManager());
       allow create, update: if isAdmin()
         && request.resource.data.keys().hasOnly(['username', 'name', 'role', 'createdAt'])
         && request.resource.data.role in ['admin', 'manager', 'bouncer', 'viewer', 'disabled']

@@ -57,6 +57,15 @@ const read = async (path: string[]) => {
 };
 const shard = (uid: string) => read(['events', EVENT_ID, 'shards', uid]);
 
+describe('Comptes : lecture limitée', () => {
+  it('Viewer et Bouncer lisent seulement leur propre compte ; le Manager lit tous les comptes', async () => {
+    await assertSucceeds(getDoc(doc(db('v'), 'users', 'v')));
+    await assertFails(getDoc(doc(db('v'), 'users', 'admin')));
+    await assertFails(getDoc(doc(db('b1'), 'users', 'admin')));
+    await assertSucceeds(getDoc(doc(db('manager'), 'users', 'admin')));
+  });
+});
+
 describe('Paiement Square (config)', () => {
   it('Manager : active Square avec un Application ID valide ; refusé si l’ID est invalide ou pour un Bouncer', async () => {
     const ok = { enabled: true, appId: 'sq0idp-AbCdEfGhIjKlMn' };

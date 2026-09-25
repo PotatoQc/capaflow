@@ -219,7 +219,7 @@ Courbe d'arrivée par défaut (F = part cumulée des arrivées des détenteurs d
 ## 8. Règles de sécurité (exigences)
 
 - Tout est refusé par défaut. « Actif » = rôle admin, manager, bouncer ou viewer, lu dans `/users/{uid}`.
-- `users` : chacun lit son propre document ; tout compte actif lit les autres ; seul l'Admin écrit.
+- `users` : chacun lit son propre document ; Manager et Admin lisent les autres ; seul l'Admin écrit.
 - `events/neon-party` : lecture par tout compte actif ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `capacity` (entier de 1 à 300), `salesOpen` et `forceSales` ; suppression interdite.
 - `private/config` : lecture par Admin, Manager et Bouncer (**pas le Viewer**) ; création par l'Admin ; mise à jour par Manager ou Admin, limitée à `priceMode`, `doorPrices` (deux entiers de 1 à 100), `params`, `pricing` et `square` (`enabled` booléen, `appId` vide ou conforme à `^sq0id[a-z]-[A-Za-z0-9_-]{10,}$`) ; `checkinLinks` modifiable par l'Admin seulement, chaque valeur vide ou conforme à `^https://app\.hi\.events/check-in/cil_[A-Za-z0-9]+(#scan)?$`.
 - `scans/totals` : lecture par tout compte actif ; écriture seulement par le compte technique de rôle `worker` (champs `student`, `regular` entiers ≥ 0 et `at == request.time`). Ce rôle ne peut rien lire ni écrire d'autre.
@@ -358,6 +358,7 @@ Une phase n'est terminée que si **tous** ses critères passent, preuve à l'app
 | 2026-09-22 | Écran Porte : dates limites d'âge (17 et 18 ans au 25 sept.) et boutons vers les check-ins. Liens saisis par l'Admin dans `private/config` (jamais dans le code public), visibles par Bouncer, Manager et Admin |
 | 2026-09-22 | Dates d'âge au format jj/mm/aaaa ; boutons de check-in toujours visibles (grisés tant que non configurés) |
 | 2026-09-23 | Phase 1 : tests des règles et d'intégration dans `app/src/data/rules.emu.ts` (et non `firebase/`), pour tester le vrai code d'écriture de l'app avec la même copie de Firebase ; `npm run test:emu` |
+| 2026-09-24 | Audit de sécurité : lecture de `users` limitée à son propre compte (Manager et Admin : tous) |
 | 2026-09-24 | Correctifs : écran de chargement figé après le retour de Square (cache à un seul onglet, le plus récent gagne ; bouton « Recharger » après 10 s) ; « compte désactivé » à la première connexion (lecture du compte réessayée) |
 | 2026-09-24 | Paiement Square intégré (Point of Sale API web mobile), désactivable dans Gestion ; vente enregistrée seulement si paiement réussi |
 | 2026-09-24 | Bouton Admin « Remise à zéro (tests) » : journal, compteurs et revenus ; bloqué par les règles dès l'ouverture des portes |
